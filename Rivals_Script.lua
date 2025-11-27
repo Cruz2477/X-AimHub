@@ -1,4 +1,4 @@
--- Roblox Rivals X-Aim Hub (FIXED VERSION)
+-- Roblox Rivals X-Aim Hub (FULLY FIXED VERSION)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -411,14 +411,14 @@ local function createDropdown(parent, name, yPos, options, defaultOption, callba
     return dropdownFrame
 end
 
--- FIXED: Team check function
+-- CRITICAL: Team check function (works for ALL aim features)
 local function isTeammate(player)
     if not settings.TeamCheck then return false end
     if not LocalPlayer.Team or not player.Team then return false end
     return LocalPlayer.Team == player.Team
 end
 
--- FIXED: Check if player is within range
+-- CRITICAL: Check if player is within 1000 studs
 local function isInRange(player)
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return false end
@@ -724,7 +724,7 @@ local function removeFOVCircle()
     end
 end
 
--- FIXED: Hitbox Resize Functions with real-time updates
+-- CRITICAL FIX: Hitbox Resize with INSTANT updates for ALL players within 1000 studs
 local function resizeHitbox(player)
     if player == LocalPlayer then return end
     if isTeammate(player) then return end
@@ -766,11 +766,20 @@ local function restoreHitbox(player)
     originalHitboxSizes[player] = nil
 end
 
+-- CRITICAL: Update ALL hitboxes for all players within 1000 studs
 local function updateAllHitboxes()
     for _, player in pairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        if isTeammate(player) then 
+            restoreHitbox(player)
+            continue 
+        end
+        
         if settings.HitboxResize then
-            if player ~= LocalPlayer and player.Character and not isTeammate(player) and isInRange(player) then
+            if player.Character and isInRange(player) then
                 resizeHitbox(player)
+            else
+                restoreHitbox(player)
             end
         else
             restoreHitbox(player)
@@ -778,7 +787,7 @@ local function updateAllHitboxes()
     end
 end
 
--- FIXED: Aimbot target selection with proper team check
+-- CRITICAL: Aimbot and Triggerbot target selection with PROPER team check
 local function getNearestPlayer()
     local camera = workspace.CurrentCamera
     if not camera then return nil end
@@ -833,6 +842,7 @@ local triggerbotActive = false
 
 local function lockOntoPlayer(player)
     if not player or not player.Character then return end
+    if isTeammate(player) then return end
     
     local head = player.Character:FindFirstChild("Head")
     if not head then return end
@@ -862,6 +872,7 @@ local aimbotActive = false
 
 local function aimAtPlayer(player, smoothness)
     if not player or not player.Character then return end
+    if isTeammate(player) then return end
     
     local head = player.Character:FindFirstChild("Head")
     if not head then return end
@@ -897,6 +908,7 @@ local godModeTarget = nil
 local function teleportBehindPlayer(player)
     if not player or not player.Character then return end
     if not LocalPlayer.Character then return end
+    if isTeammate(player) then return end
     
     local targetHRP = player.Character:FindFirstChild("HumanoidRootPart")
     local myHRP = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1000,10 +1012,8 @@ local function enableWallhack()
     wallhackConnection = RunService.Heartbeat:Connect(function()
         if not settings.Wallhack then return end
         
-        -- Make all walls and obstacles transparent/non-collidable for visibility
         for _, obj in pairs(workspace:GetDescendants()) do
             if obj:IsA("BasePart") and obj.Name ~= "Baseplate" then
-                -- Check if it's NOT a player character part
                 local isPlayerPart = false
                 for _, player in pairs(Players:GetPlayers()) do
                     if player.Character and obj:IsDescendantOf(player.Character) then
@@ -1012,7 +1022,6 @@ local function enableWallhack()
                     end
                 end
                 
-                -- If it's not a player part, make it semi-transparent
                 if not isPlayerPart and obj.Transparency < 0.9 then
                     if not obj:GetAttribute("OriginalTransparency") then
                         obj:SetAttribute("OriginalTransparency", obj.Transparency)
@@ -1030,7 +1039,6 @@ local function disableWallhack()
         wallhackConnection = nil
     end
     
-    -- Restore original transparency
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("BasePart") and obj:GetAttribute("OriginalTransparency") then
             obj.Transparency = obj:GetAttribute("OriginalTransparency")
@@ -1039,7 +1047,7 @@ local function disableWallhack()
     end
 end
 
--- Create toggles
+-- Create Visual Tab toggles
 createToggle(visualContent, "BoxESP", 0, function(enabled)
     settings.BoxESP = enabled
     if enabled then
@@ -1128,22 +1136,7 @@ createToggle(visualContent, "FOV Circle", 168, function(enabled)
     end
 end)
 
--- Other Tab Toggles
-createToggle(otherContent, "Infinite Jump", 0, function(enabled)
-    settings.InfiniteJump = enabled
-    if enabled then
-        enableInfiniteJump()
-    else
-        disableInfiniteJump()
-    end
-end)
-
-createToggle(otherContent, "Invisible", 42, function(enabled)
-    settings.Invisible = enabled
-    setInvisible(enabled)
-end)
-
--- FIXED: FOV slider with proper positioning
+-- FOV Slider
 local fovSlider = Instance.new("Frame")
 fovSlider.Name = "FOVSlider"
 fovSlider.Size = UDim2.new(1, 0, 0, 50)
@@ -1261,11 +1254,11 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- FIXED: Aim Tab with proper layout
+-- CRITICAL: Team Check toggle (affects ALL aim features)
 createToggle(aimContent, "Team Check", 0, function(enabled)
     settings.TeamCheck = enabled
     
-    -- Refresh all ESP when team check changes
+    -- Refresh all ESP
     if settings.BoxESP then
         for player in pairs(highlights) do
             removeBoxESP(player)
@@ -1298,6 +1291,20 @@ createToggle(aimContent, "Team Check", 0, function(enabled)
             end
         end
     end
+    
+    if settings.DistanceESP then
+        for player in pairs(distanceLabels) do
+            removeDistanceESP(player)
+        end
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                task.spawn(function() addDistanceESP(player) end)
+            end
+        end
+    end
+    
+    -- Refresh hitboxes (team check now affects this)
+    updateAllHitboxes()
 end)
 
 createToggle(aimContent, "Hitbox Resize", 42, function(enabled)
@@ -1310,7 +1317,7 @@ createToggle(aimContent, "Hitbox Resize", 42, function(enabled)
     end
 end)
 
--- FIXED: Hitbox slider with real-time updates
+-- CRITICAL FIX: Hitbox slider that updates ALL players instantly
 local hitboxSizeSlider = Instance.new("Frame")
 hitboxSizeSlider.Name = "HitboxSlider"
 hitboxSizeSlider.Size = UDim2.new(1, 0, 0, 50)
@@ -1382,6 +1389,7 @@ hitboxSliderBtnCorner.Parent = hitboxSliderButton
 
 local hitboxSliderDragging = false
 
+-- CRITICAL: This function updates ALL player hitboxes INSTANTLY when slider moves
 local function updateHitboxSlider(inputX)
     if not hitboxSliderBar or not hitboxSliderBar.Parent then return end
     
@@ -1397,10 +1405,13 @@ local function updateHitboxSlider(inputX)
     
     settings.HitboxSize = value
     
-    -- CRITICAL: Update all hitboxes immediately when slider moves
+    -- CRITICAL: Update ALL player hitboxes within 1000 studs INSTANTLY
     if settings.HitboxResize then
         for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and not isTeammate(player) and isInRange(player) then
+            if player == LocalPlayer then continue end
+            if isTeammate(player) then continue end
+            
+            if player.Character and isInRange(player) then
                 local hrp = player.Character:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     hrp.Size = Vector3.new(value, value, value)
@@ -1437,3 +1448,305 @@ UserInputService.InputChanged:Connect(function(input)
         task.spawn(function()
             updateHitboxSlider(input.Position.X)
         end)
+    end
+end)
+
+-- Aimbot toggle
+local aimbotToggle = createToggle(aimContent, "Aimbot", 142, function(enabled)
+    settings.Aimbot = enabled
+    aimbotActive = enabled
+    
+    local aimbotTypeDropdown = aimContent:FindFirstChild("AimbotTypeDropdown")
+    if aimbotTypeDropdown then
+        aimbotTypeDropdown.Visible = enabled
+    end
+end)
+aimbotToggle.Name = "AimbotToggle"
+
+-- Aimbot Type Dropdown
+local aimbotTypeDropdown = createDropdown(aimContent, "Aimbot Type", 184, {"Blatant", "Legit"}, "Blatant", function(option)
+    settings.AimbotType = option
+end)
+aimbotTypeDropdown.Name = "AimbotTypeDropdown"
+
+-- God Mode
+local godModeToggle = createToggle(aimContent, "God Mode", 226, function(enabled)
+    settings.GodMode = enabled
+    
+    if enabled then
+        godModeConnection = RunService.Heartbeat:Connect(function()
+            if settings.GodMode and godModeTarget then
+                teleportBehindPlayer(godModeTarget)
+            end
+        end)
+        
+        godModeTarget = getNearestPlayer()
+    else
+        if godModeConnection then
+            godModeConnection:Disconnect()
+            godModeConnection = nil
+        end
+        godModeTarget = nil
+    end
+end)
+godModeToggle.Name = "GodModeToggle"
+
+-- Wallhack
+createToggle(aimContent, "Wallhack", 268, function(enabled)
+    settings.Wallhack = enabled
+    if enabled then
+        enableWallhack()
+    else
+        disableWallhack()
+    end
+end)
+
+-- Triggerbot
+local triggerbotToggle = createToggle(aimContent, "Triggerbot", 310, function(enabled)
+    settings.Triggerbot = enabled
+    triggerbotActive = false
+    
+    local triggerbotKeybind = aimContent:FindFirstChild("TriggerbotKeybind")
+    if triggerbotKeybind then
+        triggerbotKeybind.Visible = enabled
+    end
+end)
+triggerbotToggle.Name = "TriggerbotToggle"
+
+-- Triggerbot Keybind
+local triggerbotKeybind = createKeybind(aimContent, "Triggerbot Key", 352, Enum.KeyCode.Q, function(key)
+    settings.TriggerbotKey = key
+end)
+triggerbotKeybind.Name = "TriggerbotKeybind"
+
+-- Other Tab Toggles
+createToggle(otherContent, "Infinite Jump", 0, function(enabled)
+    settings.InfiniteJump = enabled
+    if enabled then
+        enableInfiniteJump()
+    else
+        disableInfiniteJump()
+    end
+end)
+
+createToggle(otherContent, "Invisible", 42, function(enabled)
+    settings.Invisible = enabled
+    setInvisible(enabled)
+end)
+
+-- Triggerbot activation
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if settings.Triggerbot and input.KeyCode == settings.TriggerbotKey then
+        triggerbotActive = true
+        
+        while triggerbotActive and settings.Triggerbot do
+            local target = getNearestPlayer()
+            if target and not isTeammate(target) then
+                lockOntoPlayer(target)
+            end
+            task.wait(0.01)
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == settings.TriggerbotKey then
+        triggerbotActive = false
+    end
+end)
+
+-- Player events
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function(char)
+            task.wait(0.5)
+            if settings.BoxESP then
+                task.spawn(function() addBoxESP(player) end)
+            end
+            if settings.NameESP then
+                task.spawn(function() addNameESP(player) end)
+            end
+            if settings.TracerESP then
+                task.spawn(function() addTracerESP(player) end)
+            end
+            if settings.DistanceESP then
+                task.spawn(function() addDistanceESP(player) end)
+            end
+            if settings.HitboxResize then
+                task.spawn(function() resizeHitbox(player) end)
+            end
+        end)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    removeBoxESP(player)
+    removeNameESP(player)
+    removeTracerESP(player)
+    removeDistanceESP(player)
+    restoreHitbox(player)
+    originalHitboxSizes[player] = nil
+end)
+
+-- Handle existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        if player.Character then
+            task.wait(0.1)
+            if settings.BoxESP then
+                task.spawn(function() addBoxESP(player) end)
+            end
+            if settings.NameESP then
+                task.spawn(function() addNameESP(player) end)
+            end
+            if settings.TracerESP then
+                task.spawn(function() addTracerESP(player) end)
+            end
+            if settings.DistanceESP then
+                task.spawn(function() addDistanceESP(player) end)
+            end
+            if settings.HitboxResize then
+                task.spawn(function() resizeHitbox(player) end)
+            end
+        end
+        
+        player.CharacterAdded:Connect(function(char)
+            if tracers[player] then
+                removeTracerESP(player)
+            end
+            if distanceLabels[player] then
+                removeDistanceESP(player)
+            end
+            
+            char:WaitForChild("HumanoidRootPart", 5)
+            task.wait(0.5)
+            
+            if settings.BoxESP then
+                task.spawn(function() addBoxESP(player) end)
+            end
+            if settings.NameESP then
+                task.spawn(function() addNameESP(player) end)
+            end
+            if settings.TracerESP then
+                task.spawn(function() addTracerESP(player) end)
+            end
+            if settings.DistanceESP then
+                task.spawn(function() addDistanceESP(player) end)
+            end
+            if settings.HitboxResize then
+                task.spawn(function() resizeHitbox(player) end)
+            end
+        end)
+    end
+end
+
+-- Update loop - runs every frame
+RunService.RenderStepped:Connect(function()
+    -- Update tracers
+    if settings.TracerESP then
+        updateTracers()
+    end
+    
+    -- Update distance labels
+    if settings.DistanceESP then
+        updateDistanceLabels()
+    end
+    
+    -- Aimbot
+    if settings.Aimbot and aimbotActive then
+        local target = getNearestPlayer()
+        if target and not isTeammate(target) then
+            aimAtPlayer(target, 0.2)
+        end
+    end
+    
+    -- God Mode
+    if settings.GodMode then
+        if not godModeTarget or not godModeTarget.Parent or not godModeTarget.Character or isTeammate(godModeTarget) then
+            godModeTarget = getNearestPlayer()
+        end
+    end
+    
+    -- Continuously update hitboxes to maintain size
+    if settings.HitboxResize then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and not isTeammate(player) and player.Character and isInRange(player) then
+                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp and hrp.Size ~= Vector3.new(settings.HitboxSize, settings.HitboxSize, settings.HitboxSize) then
+                    hrp.Size = Vector3.new(settings.HitboxSize, settings.HitboxSize, settings.HitboxSize)
+                    hrp.Transparency = 1
+                    hrp.CanCollide = false
+                    hrp.Massless = true
+                end
+            end
+        end
+    end
+end)
+
+-- Handle character respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if settings.Invisible then
+        setInvisible(true)
+    end
+    if settings.InfiniteJump then
+        enableInfiniteJump()
+    end
+end)
+
+-- Reopen button
+local reopenButton = Instance.new("TextButton")
+reopenButton.Name = "ReopenButton"
+reopenButton.Size = UDim2.new(0, 100, 0, 35)
+reopenButton.Position = UDim2.new(0, 10, 0, 10)
+reopenButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+reopenButton.Text = "Open Config"
+reopenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+reopenButton.Font = Enum.Font.GothamBold
+reopenButton.TextSize = 11
+reopenButton.Visible = false
+reopenButton.Parent = screenGui
+
+local reopenCorner = Instance.new("UICorner")
+reopenCorner.CornerRadius = UDim.new(0, 6)
+reopenCorner.Parent = reopenButton
+
+reopenButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = true
+    reopenButton.Visible = false
+end)
+
+-- Close button action
+closeButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+    reopenButton.Visible = true
+end)
+
+-- Make draggable
+local windowDragging = false
+local dragStart, startPos
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        windowDragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                windowDragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if windowDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+print("X-Aim Hub loaded successfully! All fixes applied.")
