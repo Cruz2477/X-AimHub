@@ -1,4 +1,4 @@
--- Roblox Rivals X-Aim Hub (FULLY FIXED VERSION)
+-- Roblox Rivals Visual Config
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -39,15 +39,15 @@ local settings = {
 
 -- Create ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "X-Aim Hub"
+screenGui.Name = "VisualConfig"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Create main frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 280, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -140, 0.5, -200)
+mainFrame.Size = UDim2.new(0, 280, 0, 320)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -160)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
@@ -72,7 +72,7 @@ titleCorner.Parent = titleBar
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -30, 1, 0)
 title.BackgroundTransparency = 1
-title.Text = "X-Aim Hub (FIXED)"
+title.Text = "Visual Config"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
@@ -149,7 +149,6 @@ visualContent.Position = UDim2.new(0, 10, 0, 70)
 visualContent.BackgroundTransparency = 1
 visualContent.BorderSizePixel = 0
 visualContent.ScrollBarThickness = 4
-visualContent.CanvasSize = UDim2.new(0, 0, 0, 300)
 visualContent.Parent = mainFrame
 
 local aimContent = Instance.new("ScrollingFrame")
@@ -159,7 +158,6 @@ aimContent.Position = UDim2.new(0, 10, 0, 70)
 aimContent.BackgroundTransparency = 1
 aimContent.BorderSizePixel = 0
 aimContent.ScrollBarThickness = 4
-aimContent.CanvasSize = UDim2.new(0, 0, 0, 400)
 aimContent.Visible = false
 aimContent.Parent = mainFrame
 
@@ -170,7 +168,6 @@ otherContent.Position = UDim2.new(0, 10, 0, 70)
 otherContent.BackgroundTransparency = 1
 otherContent.BorderSizePixel = 0
 otherContent.ScrollBarThickness = 4
-otherContent.CanvasSize = UDim2.new(0, 0, 0, 150)
 otherContent.Visible = false
 otherContent.Parent = mainFrame
 
@@ -411,31 +408,137 @@ local function createDropdown(parent, name, yPos, options, defaultOption, callba
     return dropdownFrame
 end
 
--- CRITICAL: Team check function (works for ALL aim features)
-local function isTeammate(player)
-    if not settings.TeamCheck then return false end
-    if not LocalPlayer.Team or not player.Team then return false end
-    return LocalPlayer.Team == player.Team
-end
-
--- CRITICAL: Check if player is within 1000 studs
-local function isInRange(player)
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return false end
+-- Function to create slider (FIXED VERSION)
+local function createSlider(parent, name, yPos, minVal, maxVal, defaultVal, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, 0, 0, 50)
+    sliderFrame.Position = UDim2.new(0, 0, 0, yPos)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    sliderFrame.BorderSizePixel = 0
+    sliderFrame.Parent = parent
     
-    local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-    return distance <= settings.ESPRange
+    local sliderCorner = Instance.new("UICorner")
+    sliderCorner.CornerRadius = UDim.new(0, 6)
+    sliderCorner.Parent = sliderFrame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -20, 0, 20)
+    label.Position = UDim2.new(0, 10, 0, 5)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = sliderFrame
+    
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Size = UDim2.new(0, 40, 0, 20)
+    valueLabel.Position = UDim2.new(1, -50, 0, 5)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Text = tostring(defaultVal)
+    valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    valueLabel.Font = Enum.Font.GothamBold
+    valueLabel.TextSize = 11
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.Parent = sliderFrame
+    
+    local sliderBar = Instance.new("Frame")
+    sliderBar.Size = UDim2.new(1, -20, 0, 4)
+    sliderBar.Position = UDim2.new(0, 10, 1, -15)
+    sliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    sliderBar.BorderSizePixel = 0
+    sliderBar.Parent = sliderFrame
+    
+    local sliderBarCorner = Instance.new("UICorner")
+    sliderBarCorner.CornerRadius = UDim.new(1, 0)
+    sliderBarCorner.Parent = sliderBar
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderBar
+    
+    local sliderFillCorner = Instance.new("UICorner")
+    sliderFillCorner.CornerRadius = UDim.new(1, 0)
+    sliderFillCorner.Parent = sliderFill
+    
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Size = UDim2.new(0, 12, 0, 12)
+    sliderButton.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -6, 0.5, -6)
+    sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderButton.Text = ""
+    sliderButton.AutoButtonColor = false
+    sliderButton.Active = true
+    sliderButton.Parent = sliderBar
+    
+    local sliderBtnCorner = Instance.new("UICorner")
+    sliderBtnCorner.CornerRadius = UDim.new(1, 0)
+    sliderBtnCorner.Parent = sliderButton
+    
+    local sliderDragging = false
+    
+    local function updateSlider(inputX)
+        if not sliderBar or not sliderBar.Parent then return end
+        
+        wait() -- Small delay to ensure AbsolutePosition is updated
+        
+        local relativePos = (inputX - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X
+        relativePos = math.clamp(relativePos, 0, 1)
+        
+        local value = math.floor(minVal + (maxVal - minVal) * relativePos)
+        valueLabel.Text = tostring(value)
+        sliderFill.Size = UDim2.new(relativePos, 0, 1, 0)
+        sliderButton.Position = UDim2.new(relativePos, -6, 0.5, -6)
+        
+        callback(value)
+    end
+    
+    -- Start dragging from button
+    sliderButton.MouseButton1Down:Connect(function()
+        sliderDragging = true
+    end)
+    
+    sliderButton.TouchTap:Connect(function()
+        sliderDragging = true
+    end)
+    
+    -- Start dragging from bar click
+    sliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            sliderDragging = true
+            task.spawn(function()
+                updateSlider(input.Position.X)
+            end)
+        end
+    end)
+    
+    -- Stop dragging
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            sliderDragging = false
+        end
+    end)
+    
+    -- Update while dragging
+    UserInputService.InputChanged:Connect(function(input)
+        if sliderDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            task.spawn(function()
+                updateSlider(input.Position.X)
+            end)
+        end
+    end)
 end
 
 -- BoxESP Functions
 local function addBoxESP(player)
     if player == LocalPlayer then return end
-    if isTeammate(player) then return end
-    if not isInRange(player) then return end
     
     local char = player.Character
     if not char then return end
     
+    -- Remove existing highlight first
     if highlights[player] then
         highlights[player]:Destroy()
         highlights[player] = nil
@@ -463,8 +566,6 @@ end
 -- NameESP Functions
 local function addNameESP(player)
     if player == LocalPlayer then return end
-    if isTeammate(player) then return end
-    if not isInRange(player) then return end
     
     local char = player.Character
     if not char then return end
@@ -472,6 +573,13 @@ local function addNameESP(player)
     local head = char:FindFirstChild("Head")
     if not head then return end
     
+    -- Check distance
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local distance = (head.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+        if distance > settings.ESPRange then return end
+    end
+    
+    -- Remove existing name tag first
     if nameTags[player] then
         nameTags[player]:Destroy()
         nameTags[player] = nil
@@ -505,11 +613,9 @@ local function removeNameESP(player)
     end
 end
 
--- TracerESP Functions
+-- TracerESP Functions (FIXED)
 local function addTracerESP(player)
     if player == LocalPlayer then return end
-    if isTeammate(player) then return end
-    if not isInRange(player) then return end
     
     local char = player.Character
     if not char then return end
@@ -517,10 +623,18 @@ local function addTracerESP(player)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
+    -- Check distance
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local distance = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+        if distance > settings.ESPRange then return end
+    end
+    
+    -- Remove existing tracer first
     if tracers[player] then
         removeTracerESP(player)
     end
     
+    -- Check if Drawing API exists
     if Drawing then
         local line = Drawing.new("Line")
         line.Visible = false
@@ -530,6 +644,7 @@ local function addTracerESP(player)
         
         tracers[player] = {line = line, isDrawing = true}
     else
+        -- Fallback to ScreenGui method
         local tracerGui = Instance.new("ScreenGui")
         tracerGui.Name = "TracerESP_" .. player.Name
         tracerGui.IgnoreGuiInset = true
@@ -567,12 +682,8 @@ local function updateTracers()
     local centerScreen = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
     
     for player, data in pairs(tracers) do
+        -- Check if player still exists and is in the game
         if not player or not player.Parent or not Players:GetPlayerByUserId(player.UserId) then
-            removeTracerESP(player)
-            continue
-        end
-        
-        if isTeammate(player) then
             removeTracerESP(player)
             continue
         end
@@ -581,7 +692,14 @@ local function updateTracers()
         if char and char.Parent then
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if hrp and hrp.Parent then
-                if isInRange(player) then
+                -- Check distance
+                local inRange = true
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local distance = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                    inRange = distance <= settings.ESPRange
+                end
+                
+                if inRange then
                     local hrpPos = hrp.Position
                     local screenPos, onScreen = camera:WorldToViewportPoint(hrpPos)
                     
@@ -589,10 +707,12 @@ local function updateTracers()
                         local targetPos = Vector2.new(screenPos.X, screenPos.Y)
                         
                         if data.isDrawing then
+                            -- Drawing API method
                             data.line.From = centerScreen
                             data.line.To = targetPos
                             data.line.Visible = true
                         else
+                            -- ScreenGui method
                             local distance = (centerScreen - targetPos).Magnitude
                             local angle = math.atan2(targetPos.Y - centerScreen.Y, targetPos.X - centerScreen.X)
                             
@@ -605,84 +725,15 @@ local function updateTracers()
                         data.line.Visible = false
                     end
                 else
-                    removeTracerESP(player)
+                    data.line.Visible = false
                 end
             else
+                -- HumanoidRootPart is gone, remove tracer
                 removeTracerESP(player)
             end
         else
+            -- Character is gone, remove tracer
             removeTracerESP(player)
-        end
-    end
-end
-
--- DistanceESP Functions
-local function addDistanceESP(player)
-    if player == LocalPlayer then return end
-    if isTeammate(player) then return end
-    if not isInRange(player) then return end
-    
-    local char = player.Character
-    if not char then return end
-    
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    if distanceLabels[player] then
-        distanceLabels[player]:Destroy()
-        distanceLabels[player] = nil
-    end
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "DistanceESP"
-    billboard.Adornee = hrp
-    billboard.Size = UDim2.new(0, 100, 0, 30)
-    billboard.StudsOffset = Vector3.new(3, 0, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = hrp
-    
-    local distLabel = Instance.new("TextLabel")
-    distLabel.Size = UDim2.new(1, 0, 1, 0)
-    distLabel.BackgroundTransparency = 1
-    distLabel.Text = "0m"
-    distLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    distLabel.TextStrokeTransparency = 0.5
-    distLabel.Font = Enum.Font.GothamBold
-    distLabel.TextSize = 14
-    distLabel.Parent = billboard
-    
-    distanceLabels[player] = billboard
-end
-
-local function removeDistanceESP(player)
-    if distanceLabels[player] then
-        distanceLabels[player]:Destroy()
-        distanceLabels[player] = nil
-    end
-end
-
-local function updateDistanceLabels()
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
-    local myPos = LocalPlayer.Character.HumanoidRootPart.Position
-    
-    for player, billboard in pairs(distanceLabels) do
-        if isTeammate(player) then
-            removeDistanceESP(player)
-            continue
-        end
-        
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local theirPos = player.Character.HumanoidRootPart.Position
-            local distance = (myPos - theirPos).Magnitude
-            
-            if distance > settings.ESPRange then
-                removeDistanceESP(player)
-            else
-                local distLabel = billboard:FindFirstChildOfClass("TextLabel")
-                if distLabel then
-                    distLabel.Text = string.format("%.0fm", distance)
-                end
-            end
         end
     end
 end
@@ -724,11 +775,9 @@ local function removeFOVCircle()
     end
 end
 
--- CRITICAL FIX: Hitbox Resize with INSTANT updates for ALL players within 1000 studs
+-- Hitbox Resize Functions
 local function resizeHitbox(player)
     if player == LocalPlayer then return end
-    if isTeammate(player) then return end
-    if not isInRange(player) then return end
     
     local char = player.Character
     if not char then return end
@@ -736,6 +785,13 @@ local function resizeHitbox(player)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
+    -- Check if within range (1000 studs)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local distance = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+        if distance > 1000 then return end
+    end
+    
+    -- Store original size if not already stored
     if not originalHitboxSizes[player] then
         originalHitboxSizes[player] = {
             Size = hrp.Size,
@@ -743,6 +799,7 @@ local function resizeHitbox(player)
         }
     end
     
+    -- CRITICAL FIX: Resize hitbox to current slider value and make massless
     hrp.Size = Vector3.new(settings.HitboxSize, settings.HitboxSize, settings.HitboxSize)
     hrp.Transparency = 1
     hrp.CanCollide = false
@@ -758,6 +815,7 @@ local function restoreHitbox(player)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
+    -- Restore original size and properties
     hrp.Size = originalHitboxSizes[player].Size
     hrp.Transparency = 1
     hrp.CanCollide = originalHitboxSizes[player].CanCollide
@@ -766,20 +824,11 @@ local function restoreHitbox(player)
     originalHitboxSizes[player] = nil
 end
 
--- CRITICAL: Update ALL hitboxes for all players within 1000 studs
 local function updateAllHitboxes()
     for _, player in pairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        if isTeammate(player) then 
-            restoreHitbox(player)
-            continue 
-        end
-        
         if settings.HitboxResize then
-            if player.Character and isInRange(player) then
+            if player ~= LocalPlayer and player.Character then
                 resizeHitbox(player)
-            else
-                restoreHitbox(player)
             end
         else
             restoreHitbox(player)
@@ -787,7 +836,27 @@ local function updateAllHitboxes()
     end
 end
 
--- CRITICAL: Aimbot and Triggerbot target selection with PROPER team check
+-- Triggerbot Functions
+local triggerbotActive = false
+
+local function isTeammate(player)
+    -- If team check is disabled, everyone is fair game
+    if not settings.TeamCheck then return false end
+    
+    -- If either player has no team, they're not teammates
+    local myTeam = LocalPlayer.Team
+    local theirTeam = player.Team
+    
+    if not myTeam or not theirTeam then return false end
+    
+    -- CRITICAL: Direct team comparison
+    if myTeam == theirTeam then
+        return true
+    end
+    
+    return false
+end
+
 local function getNearestPlayer()
     local camera = workspace.CurrentCamera
     if not camera then return nil end
@@ -797,9 +866,17 @@ local function getNearestPlayer()
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     
     for _, player in pairs(Players:GetPlayers()) do
+        -- Skip local player FIRST
         if player == LocalPlayer then continue end
-        if isTeammate(player) then continue end
-        if not isInRange(player) then continue end
+        
+        -- CRITICAL: Check team BEFORE any other logic
+        local myTeam = LocalPlayer.Team
+        local theirTeam = player.Team
+        
+        -- If team check is ON and they have the same team, SKIP
+        if settings.TeamCheck and myTeam and theirTeam and myTeam == theirTeam then
+            continue
+        end
         
         local char = player.Character
         if char then
@@ -807,9 +884,16 @@ local function getNearestPlayer()
             local hrp = char:FindFirstChild("HumanoidRootPart")
             
             if head and hrp then
+                -- Check distance (within 1000 studs)
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local distance = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                    if distance > 1000 then continue end
+                end
+                
                 local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
                 
                 if onScreen and screenPos.Z > 0 then
+                    -- CRITICAL: Check if player is visible with raycast (not behind walls)
                     local origin = camera.CFrame.Position
                     local direction = (head.Position - origin).Unit * (head.Position - origin).Magnitude
                     
@@ -819,6 +903,7 @@ local function getNearestPlayer()
                     
                     local raycastResult = workspace:Raycast(origin, direction, raycastParams)
                     
+                    -- Only target if raycast hits the player's character
                     if raycastResult and raycastResult.Instance then
                         if raycastResult.Instance:IsDescendantOf(char) then
                             local screenDistance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
@@ -837,42 +922,11 @@ local function getNearestPlayer()
     return nearestPlayer
 end
 
--- Triggerbot Functions
-local triggerbotActive = false
-
-local function lockOntoPlayer(player)
-    if not player or not player.Character then return end
-    if isTeammate(player) then return end
-    
-    local head = player.Character:FindFirstChild("Head")
-    if not head then return end
-    
-    local camera = workspace.CurrentCamera
-    if not camera then return end
-    
-    local origin = camera.CFrame.Position
-    local direction = (head.Position - origin).Unit * (head.Position - origin).Magnitude
-    
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, camera}
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    
-    local raycastResult = workspace:Raycast(origin, direction, raycastParams)
-    
-    if raycastResult and raycastResult.Instance and raycastResult.Instance:IsDescendantOf(player.Character) then
-        camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
-        task.spawn(function()
-            mouse1click()
-        end)
-    end
-end
-
 -- Aimbot Functions
 local aimbotActive = false
 
 local function aimAtPlayer(player, smoothness)
     if not player or not player.Character then return end
-    if isTeammate(player) then return end
     
     local head = player.Character:FindFirstChild("Head")
     if not head then return end
@@ -880,6 +934,7 @@ local function aimAtPlayer(player, smoothness)
     local camera = workspace.CurrentCamera
     if not camera then return end
     
+    -- Verify player is visible (not behind walls)
     local origin = camera.CFrame.Position
     local direction = (head.Position - origin).Unit * (head.Position - origin).Magnitude
     
@@ -889,13 +944,16 @@ local function aimAtPlayer(player, smoothness)
     
     local raycastResult = workspace:Raycast(origin, direction, raycastParams)
     
+    -- Only aim if player is visible
     if raycastResult and raycastResult.Instance and raycastResult.Instance:IsDescendantOf(player.Character) then
         local targetPos = head.Position
         local currentCFrame = camera.CFrame
         
         if settings.AimbotType == "Blatant" then
+            -- Instant snap to target (100% headshot rate)
             camera.CFrame = CFrame.new(currentCFrame.Position, targetPos)
         else
+            -- Legit smooth aim
             local targetCFrame = CFrame.new(currentCFrame.Position, targetPos)
             camera.CFrame = currentCFrame:Lerp(targetCFrame, smoothness or 0.2)
         end
@@ -908,15 +966,16 @@ local godModeTarget = nil
 local function teleportBehindPlayer(player)
     if not player or not player.Character then return end
     if not LocalPlayer.Character then return end
-    if isTeammate(player) then return end
     
     local targetHRP = player.Character:FindFirstChild("HumanoidRootPart")
     local myHRP = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     
     if not targetHRP or not myHRP then return end
     
-    local behindPos = targetHRP.CFrame * CFrame.new(0, 0, 3)
+    -- Calculate position behind the target
+    local behindPos = targetHRP.CFrame * CFrame.new(0, 0, 3) -- 3 studs behind
     
+    -- Smooth tween to position
     local TweenService = game:GetService("TweenService")
     local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     local goal = {CFrame = behindPos}
@@ -959,6 +1018,7 @@ local function setInvisible(enabled)
                     if not invisibleParts[part] then
                         invisibleParts[part] = part.Transparency
                         part.Transparency = 1
+                        -- Also make it non-collidable
                         if part.CanCollide then
                             part.CanCollide = false
                         end
@@ -985,6 +1045,7 @@ local function setInvisible(enabled)
         end
     end
     
+    -- Make accessories invisible too
     for _, accessory in pairs(LocalPlayer.Character:GetChildren()) do
         if accessory:IsA("Accessory") then
             local handle = accessory:FindFirstChild("Handle")
@@ -1005,28 +1066,45 @@ local function setInvisible(enabled)
     end
 end
 
--- FIXED: Wallhack implementation
+local function lockOntoPlayer(player)
+    if not player or not player.Character then return end
+    
+    local head = player.Character:FindFirstChild("Head")
+    if not head then return end
+    
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+    
+    -- Lock camera onto head
+    camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+    
+    -- Simulate shooting
+    task.spawn(function()
+        mouse1click()
+    end)
+end
+
+-- Wallhack Functions
 local function enableWallhack()
     if wallhackConnection then return end
     
+    -- Make all bullets/projectiles ignore walls
     wallhackConnection = RunService.Heartbeat:Connect(function()
         if not settings.Wallhack then return end
         
+        -- Find all projectiles/bullets in workspace
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and obj.Name ~= "Baseplate" then
-                local isPlayerPart = false
-                for _, player in pairs(Players:GetPlayers()) do
-                    if player.Character and obj:IsDescendantOf(player.Character) then
-                        isPlayerPart = true
-                        break
+            if obj:IsA("BasePart") and (obj.Name:lower():find("bullet") or obj.Name:lower():find("projectile") or obj.Name:lower():find("shot")) then
+                -- Check if it belongs to local player
+                if obj:FindFirstAncestorOfClass("Model") then
+                    local model = obj:FindFirstAncestorOfClass("Model")
+                    if model and Players:GetPlayerFromCharacter(model) == LocalPlayer then
+                        obj.CanCollide = false
+                        -- Make it pass through everything except players
+                        if obj:FindFirstChild("BodyVelocity") or obj:FindFirstChild("BodyForce") then
+                            obj.CanCollide = false
+                        end
                     end
-                end
-                
-                if not isPlayerPart and obj.Transparency < 0.9 then
-                    if not obj:GetAttribute("OriginalTransparency") then
-                        obj:SetAttribute("OriginalTransparency", obj.Transparency)
-                    end
-                    obj.Transparency = 0.9
                 end
             end
         end
@@ -1038,19 +1116,86 @@ local function disableWallhack()
         wallhackConnection:Disconnect()
         wallhackConnection = nil
     end
+end
+
+-- DistanceESP Functions
+local function addDistanceESP(player)
+    if player == LocalPlayer then return end
     
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj:GetAttribute("OriginalTransparency") then
-            obj.Transparency = obj:GetAttribute("OriginalTransparency")
-            obj:SetAttribute("OriginalTransparency", nil)
+    local char = player.Character
+    if not char then return end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    -- Remove existing distance label
+    if distanceLabels[player] then
+        distanceLabels[player]:Destroy()
+        distanceLabels[player] = nil
+    end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "DistanceESP"
+    billboard.Adornee = hrp
+    billboard.Size = UDim2.new(0, 100, 0, 30)
+    billboard.StudsOffset = Vector3.new(3, 0, 0) -- 90 degree angle to the side
+    billboard.AlwaysOnTop = true
+    billboard.Parent = hrp
+    
+    local distLabel = Instance.new("TextLabel")
+    distLabel.Size = UDim2.new(1, 0, 1, 0)
+    distLabel.BackgroundTransparency = 1
+    distLabel.Text = "0m"
+    distLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    distLabel.TextStrokeTransparency = 0.5
+    distLabel.Font = Enum.Font.GothamBold
+    distLabel.TextSize = 14
+    distLabel.Parent = billboard
+    
+    distanceLabels[player] = billboard
+end
+
+local function removeDistanceESP(player)
+    if distanceLabels[player] then
+        distanceLabels[player]:Destroy()
+        distanceLabels[player] = nil
+    end
+end
+
+local function updateDistanceLabels()
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+    local myPos = LocalPlayer.Character.HumanoidRootPart.Position
+    
+    for player, billboard in pairs(distanceLabels) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local theirPos = player.Character.HumanoidRootPart.Position
+            local distance = (myPos - theirPos).Magnitude
+            local distLabel = billboard:FindFirstChildOfClass("TextLabel")
+            if distLabel then
+                distLabel.Text = string.format("%.0fm", distance)
+            end
         end
     end
 end
 
--- Create Visual Tab toggles
+-- Update functions
+local function updateBoxESP()
+    -- Not used anymore - handled by toggle directly
+end
+
+local function updateNameESP()
+    -- Not used anymore - handled by toggle directly
+end
+
+local function updateTracerESP()
+    -- Not used anymore - handled by toggle directly
+end
+
+-- Create toggles
 createToggle(visualContent, "BoxESP", 0, function(enabled)
     settings.BoxESP = enabled
     if enabled then
+        -- Add ESP for all players
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
                 task.spawn(function()
@@ -1059,6 +1204,7 @@ createToggle(visualContent, "BoxESP", 0, function(enabled)
             end
         end
     else
+        -- Remove all ESP
         for player, highlight in pairs(highlights) do
             if highlight then
                 highlight:Destroy()
@@ -1071,6 +1217,7 @@ end)
 createToggle(visualContent, "NameESP", 42, function(enabled)
     settings.NameESP = enabled
     if enabled then
+        -- Add ESP for all players
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
                 task.spawn(function()
@@ -1079,6 +1226,7 @@ createToggle(visualContent, "NameESP", 42, function(enabled)
             end
         end
     else
+        -- Remove all ESP
         for player, tag in pairs(nameTags) do
             if tag then
                 tag:Destroy()
@@ -1091,6 +1239,7 @@ end)
 createToggle(visualContent, "TracerESP", 84, function(enabled)
     settings.TracerESP = enabled
     if enabled then
+        -- Add ESP for all players
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
                 task.spawn(function()
@@ -1099,6 +1248,7 @@ createToggle(visualContent, "TracerESP", 84, function(enabled)
             end
         end
     else
+        -- Remove all ESP
         for player, data in pairs(tracers) do
             removeTracerESP(player)
         end
@@ -1108,6 +1258,7 @@ end)
 createToggle(visualContent, "DistanceESP", 126, function(enabled)
     settings.DistanceESP = enabled
     if enabled then
+        -- Add distance ESP for all players
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
                 task.spawn(function()
@@ -1116,6 +1267,7 @@ createToggle(visualContent, "DistanceESP", 126, function(enabled)
             end
         end
     else
+        -- Remove all distance ESP
         for player, billboard in pairs(distanceLabels) do
             removeDistanceESP(player)
         end
@@ -1130,13 +1282,29 @@ createToggle(visualContent, "FOV Circle", 168, function(enabled)
         removeFOVCircle()
     end
     
+    -- Show/hide FOV size slider
     local fovSlider = visualContent:FindFirstChild("FOVSlider")
     if fovSlider then
         fovSlider.Visible = enabled
     end
 end)
 
--- FOV Slider
+-- Other Tab Toggles
+createToggle(otherContent, "Infinite Jump", 0, function(enabled)
+    settings.InfiniteJump = enabled
+    if enabled then
+        enableInfiniteJump()
+    else
+        disableInfiniteJump()
+    end
+end)
+
+createToggle(otherContent, "Invisible", 42, function(enabled)
+    settings.Invisible = enabled
+    setInvisible(enabled)
+end)
+
+-- Create FOV slider (starts hidden)
 local fovSlider = Instance.new("Frame")
 fovSlider.Name = "FOVSlider"
 fovSlider.Size = UDim2.new(1, 0, 0, 50)
@@ -1211,7 +1379,7 @@ local fovSliderDragging = false
 local function updateFOVSlider(inputX)
     if not fovSliderBar or not fovSliderBar.Parent then return end
     
-    task.wait()
+    wait()
     
     local relativePos = (inputX - fovSliderBar.AbsolutePosition.X) / fovSliderBar.AbsoluteSize.X
     relativePos = math.clamp(relativePos, 0, 1)
@@ -1231,8 +1399,12 @@ fovSliderButton.MouseButton1Down:Connect(function()
     fovSliderDragging = true
 end)
 
+fovSliderButton.TouchTap:Connect(function()
+    fovSliderDragging = true
+end)
+
 fovSliderBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         fovSliderDragging = true
         task.spawn(function()
             updateFOVSlider(input.Position.X)
@@ -1241,85 +1413,138 @@ fovSliderBar.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         fovSliderDragging = false
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if fovSliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    if fovSliderDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         task.spawn(function()
             updateFOVSlider(input.Position.X)
         end)
     end
 end)
 
--- CRITICAL: Team Check toggle (affects ALL aim features)
+-- Aim Tab Toggles
+local hitboxSizeSlider
+local triggerbotKeybind
+local aimbotTypeDropdown
+
 createToggle(aimContent, "Team Check", 0, function(enabled)
     settings.TeamCheck = enabled
     
-    -- Refresh all ESP
+    -- Update all ESP colors when team check changes
     if settings.BoxESP then
-        for player in pairs(highlights) do
-            removeBoxESP(player)
-        end
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                task.spawn(function() addBoxESP(player) end)
+        for player, highlight in pairs(highlights) do
+            if highlight and player.Character then
+                if enabled and isTeammate(player) then
+                    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                    highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
+                else
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+                end
             end
         end
     end
     
     if settings.NameESP then
-        for player in pairs(nameTags) do
-            removeNameESP(player)
-        end
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                task.spawn(function() addNameESP(player) end)
+        for player, billboard in pairs(nameTags) do
+            if billboard and player.Character then
+                local nameLabel = billboard:FindFirstChildOfClass("TextLabel")
+                if nameLabel then
+                    if enabled and isTeammate(player) then
+                        nameLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    else
+                        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    end
+                end
             end
         end
     end
     
     if settings.TracerESP then
-        for player in pairs(tracers) do
-            removeTracerESP(player)
-        end
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                task.spawn(function() addTracerESP(player) end)
+        for player, data in pairs(tracers) do
+            if player.Character then
+                if data.isDrawing then
+                    if enabled and isTeammate(player) then
+                        data.line.Color = Color3.new(0, 1, 0)
+                    else
+                        data.line.Color = Color3.new(1, 1, 1)
+                    end
+                else
+                    if enabled and isTeammate(player) then
+                        data.line.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                    else
+                        data.line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    end
+                end
             end
         end
     end
-    
-    if settings.DistanceESP then
-        for player in pairs(distanceLabels) do
-            removeDistanceESP(player)
-        end
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                task.spawn(function() addDistanceESP(player) end)
-            end
-        end
-    end
-    
-    -- Refresh hitboxes (team check now affects this)
-    updateAllHitboxes()
 end)
 
 createToggle(aimContent, "Hitbox Resize", 42, function(enabled)
     settings.HitboxResize = enabled
     updateAllHitboxes()
     
-    local hitboxSizeSlider = aimContent:FindFirstChild("HitboxSlider")
+    -- Show/hide hitbox size slider
     if hitboxSizeSlider then
         hitboxSizeSlider.Visible = enabled
+        
+        -- Adjust aimbot toggle position
+        local aimbotToggle = aimContent:FindFirstChild("AimbotToggle")
+        if aimbotToggle then
+            if enabled then
+                aimbotToggle.Position = UDim2.new(0, 0, 0, 142)
+            else
+                aimbotToggle.Position = UDim2.new(0, 0, 0, 84)
+            end
+        end
+        
+        -- Adjust aimbot type dropdown position
+        if aimbotTypeDropdown then
+            if enabled then
+                aimbotTypeDropdown.Position = UDim2.new(0, 0, 0, 184)
+            else
+                aimbotTypeDropdown.Position = UDim2.new(0, 0, 0, 126)
+            end
+        end
+        
+        -- Adjust god mode position
+        local godModeToggle = aimContent:FindFirstChild("GodModeToggle")
+        if godModeToggle then
+            if enabled then
+                godModeToggle.Position = UDim2.new(0, 0, 0, 226)
+            else
+                godModeToggle.Position = UDim2.new(0, 0, 0, 168)
+            end
+        end
+        
+        -- Adjust triggerbot toggle position
+        local triggerbotToggle = aimContent:FindFirstChild("TriggerbotToggle")
+        if triggerbotToggle then
+            if enabled then
+                triggerbotToggle.Position = UDim2.new(0, 0, 0, 268)
+            else
+                triggerbotToggle.Position = UDim2.new(0, 0, 0, 210)
+            end
+        end
+        
+        -- Adjust triggerbot keybind position
+        if triggerbotKeybind then
+            if enabled then
+                triggerbotKeybind.Position = UDim2.new(0, 0, 0, 310)
+            else
+                triggerbotKeybind.Position = UDim2.new(0, 0, 0, 252)
+            end
+        end
     end
 end)
 
--- CRITICAL FIX: Hitbox slider that updates ALL players instantly
-local hitboxSizeSlider = Instance.new("Frame")
-hitboxSizeSlider.Name = "HitboxSlider"
+-- Create hitbox size slider (initially hidden)
+hitboxSizeSlider = Instance.new("Frame")
 hitboxSizeSlider.Size = UDim2.new(1, 0, 0, 50)
 hitboxSizeSlider.Position = UDim2.new(0, 0, 0, 84)
 hitboxSizeSlider.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -1389,11 +1614,10 @@ hitboxSliderBtnCorner.Parent = hitboxSliderButton
 
 local hitboxSliderDragging = false
 
--- CRITICAL: This function updates ALL player hitboxes INSTANTLY when slider moves
 local function updateHitboxSlider(inputX)
     if not hitboxSliderBar or not hitboxSliderBar.Parent then return end
     
-    task.wait()
+    task.wait() -- Use task.wait instead of wait
     
     local relativePos = (inputX - hitboxSliderBar.AbsolutePosition.X) / hitboxSliderBar.AbsoluteSize.X
     relativePos = math.clamp(relativePos, 0, 1)
@@ -1403,21 +1627,32 @@ local function updateHitboxSlider(inputX)
     hitboxSliderFill.Size = UDim2.new(relativePos, 0, 1, 0)
     hitboxSliderButton.Position = UDim2.new(relativePos, -6, 0.5, -6)
     
+    -- Update the setting
     settings.HitboxSize = value
     
-    -- CRITICAL: Update ALL player hitboxes within 1000 studs INSTANTLY
+    -- CRITICAL FIX: Force update all hitboxes immediately
     if settings.HitboxResize then
         for _, player in pairs(Players:GetPlayers()) do
-            if player == LocalPlayer then continue end
-            if isTeammate(player) then continue end
-            
-            if player.Character and isInRange(player) then
+            if player ~= LocalPlayer and player.Character then
                 local hrp = player.Character:FindFirstChild("HumanoidRootPart")
                 if hrp then
-                    hrp.Size = Vector3.new(value, value, value)
-                    hrp.Transparency = 1
-                    hrp.CanCollide = false
-                    hrp.Massless = true
+                    -- Check distance
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local distance = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                        if distance <= 1000 then
+                            -- Force resize with new value
+                            hrp.Size = Vector3.new(value, value, value)
+                            hrp.Transparency = 1
+                            hrp.CanCollide = false
+                            hrp.Massless = true
+                        end
+                    else
+                        -- If we can't check distance, resize anyway
+                        hrp.Size = Vector3.new(value, value, value)
+                        hrp.Transparency = 1
+                        hrp.CanCollide = false
+                        hrp.Massless = true
+                    end
                 end
             end
         end
@@ -1428,8 +1663,12 @@ hitboxSliderButton.MouseButton1Down:Connect(function()
     hitboxSliderDragging = true
 end)
 
+hitboxSliderButton.TouchTap:Connect(function()
+    hitboxSliderDragging = true
+end)
+
 hitboxSliderBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         hitboxSliderDragging = true
         task.spawn(function()
             updateHitboxSlider(input.Position.X)
@@ -1438,50 +1677,79 @@ hitboxSliderBar.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         hitboxSliderDragging = false
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if hitboxSliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    if hitboxSliderDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         task.spawn(function()
             updateHitboxSlider(input.Position.X)
         end)
     end
 end)
 
--- Aimbot toggle
-local aimbotToggle = createToggle(aimContent, "Aimbot", 142, function(enabled)
+-- Aimbot Toggle and Type Selector
+local aimbotToggle = createToggle(aimContent, "Aimbot", 84, function(enabled)
     settings.Aimbot = enabled
     aimbotActive = enabled
     
-    local aimbotTypeDropdown = aimContent:FindFirstChild("AimbotTypeDropdown")
+    -- Show/hide aimbot type dropdown
     if aimbotTypeDropdown then
         aimbotTypeDropdown.Visible = enabled
+        
+        -- Adjust positions of elements below
+        local godModeToggle = aimContent:FindFirstChild("GodModeToggle")
+        local triggerbotToggle = aimContent:FindFirstChild("TriggerbotToggle")
+        
+        if enabled then
+            -- Aimbot dropdown is visible, move things down
+            if godModeToggle then
+                godModeToggle.Position = UDim2.new(0, 0, 0, 168)
+            end
+            if triggerbotToggle then
+                triggerbotToggle.Position = UDim2.new(0, 0, 0, 210)
+            end
+            if triggerbotKeybind then
+                triggerbotKeybind.Position = UDim2.new(0, 0, 0, 252)
+            end
+        else
+            -- Aimbot dropdown is hidden, move things up
+            if godModeToggle then
+                godModeToggle.Position = UDim2.new(0, 0, 0, 126)
+            end
+            if triggerbotToggle then
+                triggerbotToggle.Position = UDim2.new(0, 0, 0, 168)
+            end
+            if triggerbotKeybind then
+                triggerbotKeybind.Position = UDim2.new(0, 0, 0, 210)
+            end
+        end
     end
 end)
 aimbotToggle.Name = "AimbotToggle"
 
--- Aimbot Type Dropdown
-local aimbotTypeDropdown = createDropdown(aimContent, "Aimbot Type", 184, {"Blatant", "Legit"}, "Blatant", function(option)
+aimbotTypeDropdown = createDropdown(aimContent, "Aimbot Type", 126, {"Blatant", "Legit"}, "Blatant", function(option)
     settings.AimbotType = option
 end)
-aimbotTypeDropdown.Name = "AimbotTypeDropdown"
 
--- God Mode
-local godModeToggle = createToggle(aimContent, "God Mode", 226, function(enabled)
+-- God Mode Toggle
+local godModeToggle = createToggle(aimContent, "God Mode", 126, function(enabled)
     settings.GodMode = enabled
     
     if enabled then
+        -- Start god mode loop
         godModeConnection = RunService.Heartbeat:Connect(function()
             if settings.GodMode and godModeTarget then
                 teleportBehindPlayer(godModeTarget)
             end
         end)
         
+        -- Get nearest target
         godModeTarget = getNearestPlayer()
     else
+        -- Stop god mode
         if godModeConnection then
             godModeConnection:Disconnect()
             godModeConnection = nil
@@ -1491,8 +1759,8 @@ local godModeToggle = createToggle(aimContent, "God Mode", 226, function(enabled
 end)
 godModeToggle.Name = "GodModeToggle"
 
--- Wallhack
-createToggle(aimContent, "Wallhack", 268, function(enabled)
+-- Wallhack Toggle
+createToggle(aimContent, "Wallhack", 168, function(enabled)
     settings.Wallhack = enabled
     if enabled then
         enableWallhack()
@@ -1501,37 +1769,20 @@ createToggle(aimContent, "Wallhack", 268, function(enabled)
     end
 end)
 
--- Triggerbot
-local triggerbotToggle = createToggle(aimContent, "Triggerbot", 310, function(enabled)
+-- Triggerbot Toggle and Keybind
+local triggerbotToggle = createToggle(aimContent, "Triggerbot", 210, function(enabled)
     settings.Triggerbot = enabled
     triggerbotActive = false
     
-    local triggerbotKeybind = aimContent:FindFirstChild("TriggerbotKeybind")
+    -- Show/hide triggerbot keybind
     if triggerbotKeybind then
         triggerbotKeybind.Visible = enabled
     end
 end)
 triggerbotToggle.Name = "TriggerbotToggle"
 
--- Triggerbot Keybind
-local triggerbotKeybind = createKeybind(aimContent, "Triggerbot Key", 352, Enum.KeyCode.Q, function(key)
+triggerbotKeybind = createKeybind(aimContent, "Triggerbot Key", 252, Enum.KeyCode.Q, function(key)
     settings.TriggerbotKey = key
-end)
-triggerbotKeybind.Name = "TriggerbotKeybind"
-
--- Other Tab Toggles
-createToggle(otherContent, "Infinite Jump", 0, function(enabled)
-    settings.InfiniteJump = enabled
-    if enabled then
-        enableInfiniteJump()
-    else
-        disableInfiniteJump()
-    end
-end)
-
-createToggle(otherContent, "Invisible", 42, function(enabled)
-    settings.Invisible = enabled
-    setInvisible(enabled)
 end)
 
 -- Triggerbot activation
@@ -1543,7 +1794,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         
         while triggerbotActive and settings.Triggerbot do
             local target = getNearestPlayer()
-            if target and not isTeammate(target) then
+            if target then
                 lockOntoPlayer(target)
             end
             task.wait(0.01)
@@ -1561,7 +1812,7 @@ end)
 Players.PlayerAdded:Connect(function(player)
     if player ~= LocalPlayer then
         player.CharacterAdded:Connect(function(char)
-            task.wait(0.5)
+            wait(0.5)
             if settings.BoxESP then
                 task.spawn(function() addBoxESP(player) end)
             end
@@ -1570,9 +1821,6 @@ Players.PlayerAdded:Connect(function(player)
             end
             if settings.TracerESP then
                 task.spawn(function() addTracerESP(player) end)
-            end
-            if settings.DistanceESP then
-                task.spawn(function() addDistanceESP(player) end)
             end
             if settings.HitboxResize then
                 task.spawn(function() resizeHitbox(player) end)
@@ -1585,7 +1833,6 @@ Players.PlayerRemoving:Connect(function(player)
     removeBoxESP(player)
     removeNameESP(player)
     removeTracerESP(player)
-    removeDistanceESP(player)
     restoreHitbox(player)
     originalHitboxSizes[player] = nil
 end)
@@ -1594,7 +1841,7 @@ end)
 for _, player in pairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
         if player.Character then
-            task.wait(0.1)
+            task.wait(0.1) -- Small delay to ensure character is fully loaded
             if settings.BoxESP then
                 task.spawn(function() addBoxESP(player) end)
             end
@@ -1613,6 +1860,7 @@ for _, player in pairs(Players:GetPlayers()) do
         end
         
         player.CharacterAdded:Connect(function(char)
+            -- Remove old tracer before adding new one to prevent glitch
             if tracers[player] then
                 removeTracerESP(player)
             end
@@ -1620,8 +1868,9 @@ for _, player in pairs(Players:GetPlayers()) do
                 removeDistanceESP(player)
             end
             
+            -- Wait for character to fully load
             char:WaitForChild("HumanoidRootPart", 5)
-            task.wait(0.5)
+            wait(0.5)
             
             if settings.BoxESP then
                 task.spawn(function() addBoxESP(player) end)
@@ -1642,9 +1891,8 @@ for _, player in pairs(Players:GetPlayers()) do
     end
 end
 
--- Update loop - runs every frame
+-- Update tracers every frame
 RunService.RenderStepped:Connect(function()
-    -- Update tracers
     if settings.TracerESP then
         updateTracers()
     end
@@ -1654,40 +1902,25 @@ RunService.RenderStepped:Connect(function()
         updateDistanceLabels()
     end
     
-    -- Aimbot
+    -- Aimbot loop
     if settings.Aimbot and aimbotActive then
         local target = getNearestPlayer()
-        if target and not isTeammate(target) then
+        if target then
             aimAtPlayer(target, 0.2)
         end
     end
     
-    -- God Mode
+    -- God Mode loop - update target if current is invalid
     if settings.GodMode then
-        if not godModeTarget or not godModeTarget.Parent or not godModeTarget.Character or isTeammate(godModeTarget) then
+        if not godModeTarget or not godModeTarget.Parent or not godModeTarget.Character then
             godModeTarget = getNearestPlayer()
-        end
-    end
-    
-    -- Continuously update hitboxes to maintain size
-    if settings.HitboxResize then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and not isTeammate(player) and player.Character and isInRange(player) then
-                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                if hrp and hrp.Size ~= Vector3.new(settings.HitboxSize, settings.HitboxSize, settings.HitboxSize) then
-                    hrp.Size = Vector3.new(settings.HitboxSize, settings.HitboxSize, settings.HitboxSize)
-                    hrp.Transparency = 1
-                    hrp.CanCollide = false
-                    hrp.Massless = true
-                end
-            end
         end
     end
 end)
 
--- Handle character respawn
+-- Handle character respawn for invisible
 LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.5)
+    wait(0.5)
     if settings.Invisible then
         setInvisible(true)
     end
@@ -1748,5 +1981,3 @@ UserInputService.InputChanged:Connect(function(input)
         mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-
-print("X-Aim Hub loaded successfully! All fixes applied.")
