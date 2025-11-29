@@ -1,4 +1,70 @@
 -- Roblox Arsenal X-Aim Hub 
+
+-- Game Check: Only run in Arsenal
+local allowedGameIds = {
+    286090429, -- Arsenal Main Game
+    299659045, -- Arsenal VIP Server
+}
+
+local currentGameId = game.PlaceId
+local isAllowedGame = false
+
+for _, id in pairs(allowedGameIds) do
+    if currentGameId == id then
+        isAllowedGame = true
+        break
+    end
+end
+
+if not isAllowedGame then
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    
+    -- Create notification
+    local notifGui = Instance.new("ScreenGui")
+    notifGui.Name = "GameCheckNotification"
+    notifGui.ResetOnSpawn = false
+    notifGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    
+    local notifFrame = Instance.new("Frame")
+    notifFrame.Size = UDim2.new(0, 350, 0, 100)
+    notifFrame.Position = UDim2.new(0.5, -175, 0.5, -50)
+    notifFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    notifFrame.BorderSizePixel = 0
+    notifFrame.Parent = notifGui
+    
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 8)
+    notifCorner.Parent = notifFrame
+    
+    local notifTitle = Instance.new("TextLabel")
+    notifTitle.Size = UDim2.new(1, -20, 0, 30)
+    notifTitle.Position = UDim2.new(0, 10, 0, 10)
+    notifTitle.BackgroundTransparency = 1
+    notifTitle.Text = "⚠️ Wrong Game!"
+    notifTitle.TextColor3 = Color3.fromRGB(255, 100, 100)
+    notifTitle.Font = Enum.Font.GothamBold
+    notifTitle.TextSize = 16
+    notifTitle.Parent = notifFrame
+    
+    local notifText = Instance.new("TextLabel")
+    notifText.Size = UDim2.new(1, -20, 0, 40)
+    notifText.Position = UDim2.new(0, 10, 0, 45)
+    notifText.BackgroundTransparency = 1
+    notifText.Text = "X-Aim Hub only works in Arsenal!\nCurrent Game ID: " .. tostring(currentGameId)
+    notifText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    notifText.Font = Enum.Font.Gotham
+    notifText.TextSize = 12
+    notifText.TextWrapped = true
+    notifText.Parent = notifFrame
+    
+    -- Auto-close after 5 seconds
+    task.wait(5)
+    notifGui:Destroy()
+    
+    return -- Stop script execution
+end
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -17,7 +83,7 @@ local wallhackConnection = nil
 
 -- Settings
 local settings = {
-    BoxESP = false,
+    PlayerESP = false,
     NameESP = false,
     TracerESP = false,
     DistanceESP = false,
@@ -27,7 +93,6 @@ local settings = {
     TriggerbotKey = Enum.KeyCode.Q,
     TeamCheck = true,
     Aimbot = false,
-    AimbotType = "Blatant",
     ESPRange = 1000,
     GodMode = false,
     InfiniteJump = false,
@@ -70,7 +135,7 @@ local logo = Instance.new("ImageLabel")
 logo.Size = UDim2.new(0, 35, 0, 35)
 logo.Position = UDim2.new(0, 10, 0, 7.5)
 logo.BackgroundTransparency = 1
-logo.Image = "rbxassetid://139487176757045"
+logo.Image = "rbxassetid://YOUR_LOGO_ID_HERE"
 logo.ScaleType = Enum.ScaleType.Fit
 logo.Parent = titleBar
 
@@ -155,7 +220,7 @@ aimContent.Position = UDim2.new(0, 10, 0, 85)
 aimContent.BackgroundTransparency = 1
 aimContent.BorderSizePixel = 0
 aimContent.ScrollBarThickness = 4
-aimContent.CanvasSize = UDim2.new(0, 0, 0, 350)
+aimContent.CanvasSize = UDim2.new(0, 0, 0, 300)
 aimContent.Visible = false
 aimContent.Parent = mainFrame
 
@@ -441,7 +506,7 @@ local function isInRange(player)
 end
 
 -- ESP Functions (WITH TEAM CHECK)
-local function addBoxESP(player)
+local function addPlayerESP(player)
     if player == LocalPlayer then return end
     if isTeammate(player) then return end
     if not isInRange(player) then return end
@@ -461,7 +526,7 @@ local function addBoxESP(player)
     end)
 end
 
-local function removeBoxESP(player)
+local function removePlayerESP(player)
     pcall(function()
         if highlights[player] then
             highlights[player]:Destroy()
@@ -691,7 +756,7 @@ local function refreshAllESP()
     -- Remove ESP from teammates
     for player in pairs(highlights) do
         if isTeammate(player) then
-            removeBoxESP(player)
+            removePlayerESP(player)
         end
     end
     
@@ -714,10 +779,10 @@ local function refreshAllESP()
     end
     
     -- Add ESP to enemies
-    if settings.BoxESP then
+    if settings.PlayerESP then
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character and not isTeammate(player) and isInRange(player) then
-                task.spawn(function() addBoxESP(player) end)
+                task.spawn(function() addPlayerESP(player) end)
             end
         end
     end
@@ -830,11 +895,8 @@ local function aimAtPlayer(player)
     local cam = workspace.CurrentCamera
     if not head or not cam then return end
     
-    if settings.AimbotType == "Blatant" then
-        cam.CFrame = CFrame.new(cam.CFrame.Position, head.Position)
-    else
-        cam.CFrame = cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position, head.Position), 0.2)
-    end
+    -- Blatant mode (instant snap)
+    cam.CFrame = CFrame.new(cam.CFrame.Position, head.Position)
 end
 
 -- Triggerbot
@@ -978,14 +1040,14 @@ local function disableWallhack()
 end
 
 -- Visual Toggles
-createToggle(visualContent, "BoxESP", 0, function(e)
-    settings.BoxESP = e
+createToggle(visualContent, "PlayerESP", 0, function(e)
+    settings.PlayerESP = e
     if e then
         for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then task.spawn(function() addBoxESP(p) end) end
+            if p ~= LocalPlayer and p.Character then task.spawn(function() addPlayerESP(p) end) end
         end
     else
-        for p in pairs(highlights) do removeBoxESP(p) end
+        for p in pairs(highlights) do removePlayerESP(p) end
     end
 end)
 
@@ -1137,20 +1199,12 @@ createToggle(aimContent, "Team Check", 0, function(e)
     refreshAllESP()
 end)
 
-local aimToggle = createToggle(aimContent, "Aimbot", 42, function(e)
+createToggle(aimContent, "Aimbot", 42, function(e)
     settings.Aimbot = e
     aimbotActive = e
-    local dropdown = aimContent:FindFirstChild("AimbotDrop")
-    if dropdown then dropdown.Visible = e end
 end)
 
-local aimbotDrop = createDropdown(aimContent, "Aimbot Type", 84, {"Blatant", "Legit"}, "Blatant", function(opt)
-    settings.AimbotType = opt
-end)
-aimbotDrop.Name = "AimbotDrop"
-aimbotDrop.Visible = false
-
-createToggle(aimContent, "God Mode", 126, function(e)
+createToggle(aimContent, "God Mode", 84, function(e)
     settings.GodMode = e
     if e then
         godModeConnection = RunService.Heartbeat:Connect(function()
@@ -1166,19 +1220,19 @@ createToggle(aimContent, "God Mode", 126, function(e)
     end
 end)
 
-createToggle(aimContent, "Wallhack", 168, function(e)
+createToggle(aimContent, "Wallhack", 126, function(e)
     settings.Wallhack = e
     if e then enableWallhack() else disableWallhack() end
 end)
 
-local trigToggle = createToggle(aimContent, "Triggerbot", 210, function(e)
+local trigToggle = createToggle(aimContent, "Triggerbot", 168, function(e)
     settings.Triggerbot = e
     triggerbotActive = false
     local kb = aimContent:FindFirstChild("TrigKB")
     if kb then kb.Visible = e end
 end)
 
-local trigKB = createKeybind(aimContent, "Triggerbot Key", 252, Enum.KeyCode.Q, function(key)
+local trigKB = createKeybind(aimContent, "Triggerbot Key", 210, Enum.KeyCode.Q, function(key)
     settings.TriggerbotKey = key
 end)
 trigKB.Name = "TrigKB"
@@ -1232,7 +1286,7 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    removeBoxESP(player)
+    removePlayerESP(player)
     removeNameESP(player)
     removeTracerESP(player)
     removeDistanceESP(player)
@@ -1243,7 +1297,7 @@ for _, player in pairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
         if player.Character then
             task.wait(0.1)
-            if settings.BoxESP then task.spawn(function() addBoxESP(player) end) end
+            if settings.PlayerESP then task.spawn(function() addPlayerESP(player) end) end
             if settings.NameESP then task.spawn(function() addNameESP(player) end) end
             if settings.TracerESP then task.spawn(function() addTracerESP(player) end) end
             if settings.DistanceESP then task.spawn(function() addDistanceESP(player) end) end
@@ -1317,7 +1371,7 @@ local reopenBtn = Instance.new("TextButton")
 reopenBtn.Size = UDim2.new(0, 120, 0, 40)
 reopenBtn.Position = UDim2.new(0, 10, 0, 10)
 reopenBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-reopenBtn.Text = "Open Config"
+reopenBtn.Text = "X-Aim Hub"
 reopenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 reopenBtn.Font = Enum.Font.GothamBold
 reopenBtn.TextSize = 12
@@ -1402,5 +1456,6 @@ print("✅ X-Aim Hub - FULLY FIXED & COMPLETE!")
 print("✅ Team Check: Auto-updates on team changes")
 print("✅ ESP: Hides teammates, shows only enemies")
 print("✅ Tracer ESP: Fixed (no more bugs)")
+print("✅ Aimbot: Blatant mode only")
 print("✅ Auto-refresh: Detects joins & team switches")
-print("✅ Replace '139487176757045' with your logo asset ID")
+print("✅ Replace 'YOUR_LOGO_ID_HERE' with your logo asset ID")
