@@ -156,7 +156,7 @@ local logo = Instance.new("ImageLabel")
 logo.Size = UDim2.new(0, 35, 0, 35)
 logo.Position = UDim2.new(0, 10, 0, 7.5)
 logo.BackgroundTransparency = 1
-logo.Image = "rbxassetid://YOUR_LOGO_ID_HERE"
+logo.Image = "rbxassetid://139487176757045"
 logo.ScaleType = Enum.ScaleType.Fit
 logo.Parent = titleBar
 
