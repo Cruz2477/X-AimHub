@@ -1,5 +1,4 @@
 -- Roblox Arsenal X-Aim Hub 
-
 -- Game Check: Only run in Arsenal
 local allowedGameIds = {
     286090429, -- Arsenal Main Game
