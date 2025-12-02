@@ -1162,11 +1162,10 @@ UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == settings.TriggerbotKey then triggerbotActive = false end
 end)
 
--- God Mode (IMPROVED - Instant target switch on kill)
+-- God Mode (IMPROVED - Auto-switches targets after kills)
 local godModeConnection = nil
 local godModeTarget = nil
 local lastTargetHealth = nil
-local previousTargets = {}
 
 local function teleportBehind(player)
     if not player or not player.Character or isTeammate(player) or not LocalPlayer.Character then return end
@@ -1177,30 +1176,6 @@ local function teleportBehind(player)
     
     local behind = tHRP.CFrame * CFrame.new(0, 0, 3)
     myHRP.CFrame = behind
-end
-
-local function getNextTarget()
-    -- Get a new target that isn't the previous one
-    local newTarget = getNearestPlayer()
-    
-    -- If the new target is the same as the old one, try to find another
-    if newTarget and godModeTarget and newTarget == godModeTarget then
-        local allTargets = {}
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and not isTeammate(player) and player.Character and player ~= godModeTarget then
-                local head = player.Character:FindFirstChild("Head")
-                if head and hasLineOfSight(player) then
-                    table.insert(allTargets, player)
-                end
-            end
-        end
-        
-        if #allTargets > 0 then
-            newTarget = allTargets[1]
-        end
-    end
-    
-    return newTarget
 end
 
 local function enableGodMode()
@@ -1219,7 +1194,7 @@ local function enableGodMode()
         
         -- Check if current target is valid
         if not godModeTarget or not godModeTarget.Parent or not godModeTarget.Character or isTeammate(godModeTarget) then
-            godModeTarget = getNextTarget()
+            godModeTarget = getNearestPlayer()
             if godModeTarget then
                 local hum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
                 if hum then
@@ -1227,14 +1202,12 @@ local function enableGodMode()
                 end
             end
         else
-            -- Check if target died (health reached 0 or dropped significantly)
+            -- Check if target died (health reached 0)
             local hum = godModeTarget.Character:FindFirstChildOfClass("Humanoid")
             if hum then
-                -- INSTANT SWITCH: If health is 0 or dropped below 5, immediately switch
-                if hum.Health <= 0 or hum.Health < 5 then
-                    -- Target is dead or dying, switch IMMEDIATELY
-                    table.insert(previousTargets, godModeTarget)
-                    godModeTarget = getNextTarget()
+                if hum.Health <= 0 or (lastTargetHealth and hum.Health < lastTargetHealth * 0.1) then
+                    -- Target died, switch to new target immediately
+                    godModeTarget = getNearestPlayer()
                     if godModeTarget then
                         local newHum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
                         if newHum then
@@ -1261,7 +1234,6 @@ local function disableGodMode()
     end
     godModeTarget = nil
     lastTargetHealth = nil
-    previousTargets = {}
 end
 
 -- Visual Toggles
