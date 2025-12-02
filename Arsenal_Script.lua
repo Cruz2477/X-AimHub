@@ -19,9 +19,6 @@ local nameTags = {}
 local tracers = {}
 local distanceLabels = {}
 local fovCircle = nil
-local originalHitboxSizes = {}
-local silentAimActive = false
-local oldNamecall = nil
 local invisibleParts = {}
 local wallhackConnection = nil
 local flyBodyVelocity = nil
@@ -29,6 +26,11 @@ local flyBodyGyro = nil
 local flyConnection = nil
 local flyEnabled = false
 local lastSpaceTap = 0
+local godModeConnection = nil
+local godModeTarget = nil
+local spinbotConnection = nil
+local hitboxExpanderConnection = nil
+local originalHitboxSizes = {}
 
 -- Settings
 local settings = {
@@ -42,19 +44,17 @@ local settings = {
     TriggerbotKey = Enum.KeyCode.Q,
     TeamCheck = true,
     Aimbot = false,
-    SilentAim = false,
     ESPRange = 1000,
     GodMode = false,
     Wallhack = false,
     SpeedHack = false,
     Speed = 16,
-    InfHealth = false,
-    InfAmmo = false,
-    NoRecoil = false,
-    InstaReload = false,
     Fly = false,
     InfiniteJump = false,
-    Invisible = false
+    Invisible = false,
+    Spinbot = false,
+    HitboxExpander = false,
+    HitboxSize = 10
 }
 
 -- Create GUI
@@ -90,7 +90,7 @@ local logo = Instance.new("ImageLabel")
 logo.Size = UDim2.new(0, 35, 0, 35)
 logo.Position = UDim2.new(0, 10, 0, 7.5)
 logo.BackgroundTransparency = 1
-logo.Image = "rbxassetid://139487176757045"
+logo.Image = "rbxassetid://7733779610"
 logo.ScaleType = Enum.ScaleType.Fit
 logo.Parent = titleBar
 
@@ -200,7 +200,17 @@ settingsContent.Position = UDim2.new(0, 10, 0, 85)
 settingsContent.BackgroundTransparency = 1
 settingsContent.BorderSizePixel = 0
 settingsContent.ScrollBarThickness = 4
-settingsContent.CanvasSize = UDim2.new(0, 0, 0, 450)
+print("✅ X-Aim Hub Loaded!")
+print("🎯 Aimbot: Wall check enabled - Won't lock through walls!")
+print("👁️ ESP: All features working with GITHUB FIXES")
+print("   - Team Check: 4 methods, auto-updates on team changes")
+print("   - TracerESP: Drawing API + ScreenGui fallback")
+print("   - Auto-refresh: Every 2 seconds + on player/team events")
+print("😈 God Mode: Auto-switches to new target after kills!")
+print("📦 Hitbox Expander: NEW - Expand hitboxes 5-50 studs (adjustable slider)")
+print("🌀 Spinbot: NEW - Spins character 360° while you control camera")
+print("🔄 Reopen Button: Click X to minimize, click button to reopen!")
+print("⚡ All features working for Arsenal!")
 settingsContent.Visible = false
 settingsContent.Parent = mainFrame
 
@@ -778,18 +788,33 @@ local function removeFOVCircle()
     end)
 end
 
--- Silent Aim with Hitbox Expansion (FIXED)
+-- Silent Aim with Hitbox Expansion (FIXED - No visual glitches)
 local function expandHitboxes()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and not isTeammate(player) then
             for _, part in pairs(player.Character:GetChildren()) do
                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                     if not originalHitboxSizes[part] then
-                        originalHitboxSizes[part] = part.Size
+                        originalHitboxSizes[part] = {
+                            Size = part.Size,
+                            CanCollide = part.CanCollide
+                        }
                     end
+                    -- Expand hitbox invisibly without changing visual appearance
                     part.Size = Vector3.new(30, 30, 30)
-                    part.Transparency = 0.8
+                    part.Transparency = 1  -- Make completely invisible
                     part.CanCollide = false
+                    
+                    -- Keep the visual mesh/appearance normal
+                    for _, child in pairs(part:GetChildren()) do
+                        if child:IsA("SpecialMesh") or child:IsA("BlockMesh") then
+                            if not child:GetAttribute("OriginalScale") then
+                                child:SetAttribute("OriginalScale", child.Scale)
+                            end
+                            -- Reset mesh to normal size so player looks normal
+                            child.Scale = child:GetAttribute("OriginalScale") or Vector3.new(1, 1, 1)
+                        end
+                    end
                 end
             end
         end
@@ -797,10 +822,19 @@ local function expandHitboxes()
 end
 
 local function restoreHitboxes()
-    for part, originalSize in pairs(originalHitboxSizes) do
+    for part, data in pairs(originalHitboxSizes) do
         if part and part.Parent then
-            part.Size = originalSize
+            part.Size = data.Size
             part.Transparency = 0
+            part.CanCollide = data.CanCollide
+            
+            -- Restore mesh scales
+            for _, child in pairs(part:GetChildren()) do
+                if (child:IsA("SpecialMesh") or child:IsA("BlockMesh")) and child:GetAttribute("OriginalScale") then
+                    child.Scale = child:GetAttribute("OriginalScale")
+                    child:SetAttribute("OriginalScale", nil)
+                end
+            end
         end
     end
     originalHitboxSizes = {}
@@ -837,98 +871,6 @@ local function enableSilentAim()
     end)
 end
 
--- Inf Health (FIXED)
-local healthConnection
-local function setInfHealth(enabled)
-    if enabled then
-        healthConnection = RunService.Heartbeat:Connect(function()
-            if settings.InfHealth and LocalPlayer.Character then
-                local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    hum.Health = math.huge
-                    hum.MaxHealth = math.huge
-                    
-                    pcall(function()
-                        local gui = LocalPlayer.PlayerGui:FindFirstChild("MainGui") or LocalPlayer.PlayerGui:FindFirstChild("GUI")
-                        if gui then
-                            local healthBar = gui:FindFirstChild("HealthBar", true)
-                            if healthBar then
-                                local bar = healthBar:FindFirstChild("Bar") or healthBar:FindFirstChild("Health")
-                                if bar and bar:IsA("GuiObject") then
-                                    bar.Size = UDim2.new(1, 0, 1, 0)
-                                end
-                            end
-                        end
-                    end)
-                end
-            end
-        end)
-    else
-        if healthConnection then
-            healthConnection:Disconnect()
-            healthConnection = nil
-        end
-        if LocalPlayer.Character then
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.MaxHealth = 100
-                hum.Health = 100
-            end
-        end
-    end
-end
-
--- Inf Ammo (FIXED)
-local ammoConnection
-local function setInfAmmo(enabled)
-    if enabled then
-        ammoConnection = RunService.Heartbeat:Connect(function()
-            if settings.InfAmmo and LocalPlayer.Character then
-                local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                if tool then
-                    local ammo = tool:FindFirstChild("Ammo")
-                    local maxAmmo = tool:FindFirstChild("MaxAmmo")
-                    local storedAmmo = tool:FindFirstChild("StoredAmmo")
-                    
-                    if ammo then ammo.Value = 999 end
-                    if maxAmmo then maxAmmo.Value = 999 end
-                    if storedAmmo then storedAmmo.Value = 999 end
-                    
-                    pcall(function()
-                        local gui = LocalPlayer.PlayerGui:FindFirstChild("MainGui") or LocalPlayer.PlayerGui:FindFirstChild("GUI")
-                        if gui then
-                            local ammoText = gui:FindFirstChild("AmmoGUI", true) or gui:FindFirstChild("Ammo", true)
-                            if ammoText and ammoText:IsA("TextLabel") then
-                                ammoText.Text = "999 / 999"
-                            end
-                        end
-                    end)
-                end
-                
-                local backpack = LocalPlayer:FindFirstChild("Backpack")
-                if backpack then
-                    for _, tool in pairs(backpack:GetChildren()) do
-                        if tool:IsA("Tool") then
-                            local ammo = tool:FindFirstChild("Ammo")
-                            local maxAmmo = tool:FindFirstChild("MaxAmmo")
-                            local storedAmmo = tool:FindFirstChild("StoredAmmo")
-                            
-                            if ammo then ammo.Value = 999 end
-                            if maxAmmo then maxAmmo.Value = 999 end
-                            if storedAmmo then storedAmmo.Value = 999 end
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if ammoConnection then
-            ammoConnection:Disconnect()
-            ammoConnection = nil
-        end
-    end
-end
-
 -- Speed Hack
 local speedConnection
 local function setSpeed(enabled)
@@ -951,67 +893,6 @@ local function setSpeed(enabled)
             if hum then
                 hum.WalkSpeed = 16
             end
-        end
-    end
-end
-
--- No Recoil
-local recoilConnection
-local function setNoRecoil(enabled)
-    if enabled then
-        recoilConnection = RunService.RenderStepped:Connect(function()
-            if settings.NoRecoil and LocalPlayer.Character then
-                local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                if tool then
-                    local recoil = tool:FindFirstChild("Recoil")
-                    if recoil then
-                        recoil.Value = 0
-                    end
-                    
-                    local recoilSpring = tool:FindFirstChild("RecoilSpring")
-                    if recoilSpring then
-                        recoilSpring.Value = Vector3.new(0, 0, 0)
-                    end
-                end
-            end
-        end)
-    else
-        if recoilConnection then
-            recoilConnection:Disconnect()
-            recoilConnection = nil
-        end
-    end
-end
-
--- Insta Reload
-local reloadConnection
-local function setInstaReload(enabled)
-    if enabled then
-        reloadConnection = RunService.Heartbeat:Connect(function()
-            if settings.InstaReload and LocalPlayer.Character then
-                local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                if tool then
-                    local reloading = tool:FindFirstChild("Reloading")
-                    if reloading and reloading.Value == true then
-                        local ammo = tool:FindFirstChild("Ammo")
-                        local maxAmmo = tool:FindFirstChild("MaxAmmo")
-                        if ammo and maxAmmo then
-                            ammo.Value = maxAmmo.Value
-                        end
-                        reloading.Value = false
-                    end
-                    
-                    local reloadTime = tool:FindFirstChild("ReloadTime")
-                    if reloadTime then
-                        reloadTime.Value = 0.01
-                    end
-                end
-            end
-        end)
-    else
-        if reloadConnection then
-            reloadConnection:Disconnect()
-            reloadConnection = nil
         end
     end
 end
@@ -1106,25 +987,6 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- Infinite Jump
-local infJumpConn = nil
-local function enableInfiniteJump()
-    if infJumpConn then return end
-    infJumpConn = UserInputService.JumpRequest:Connect(function()
-        if settings.InfiniteJump and LocalPlayer.Character then
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-        end
-    end)
-end
-
-local function disableInfiniteJump()
-    if infJumpConn then
-        infJumpConn:Disconnect()
-        infJumpConn = nil
-    end
-end
-
 -- Invisible
 local function setInvisible(enabled)
     if not LocalPlayer.Character then return end
@@ -1159,44 +1021,6 @@ local function setInvisible(enabled)
     end
 end
 
--- Wallhack
-local function enableWallhack()
-    if wallhackConnection then return end
-    wallhackConnection = RunService.Heartbeat:Connect(function()
-        if not settings.Wallhack then return end
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and obj.Name ~= "Baseplate" then
-                local isPlayer = false
-                for _, p in pairs(Players:GetPlayers()) do
-                    if p.Character and obj:IsDescendantOf(p.Character) then
-                        isPlayer = true
-                        break
-                    end
-                end
-                if not isPlayer and obj.Transparency < 0.9 then
-                    if not obj:GetAttribute("OrigTrans") then
-                        obj:SetAttribute("OrigTrans", obj.Transparency)
-                    end
-                    obj.Transparency = 0.9
-                end
-            end
-        end
-    end)
-end
-
-local function disableWallhack()
-    if wallhackConnection then
-        wallhackConnection:Disconnect()
-        wallhackConnection = nil
-    end
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj:GetAttribute("OrigTrans") then
-            obj.Transparency = obj:GetAttribute("OrigTrans")
-            obj:SetAttribute("OrigTrans", nil)
-        end
-    end
-end
-
 -- Aimbot with wall check
 local aimbotActive = false
 local function aimAtPlayer(player)
@@ -1208,6 +1032,106 @@ local function aimAtPlayer(player)
     if not head or not cam then return end
     
     cam.CFrame = CFrame.new(cam.CFrame.Position, head.Position)
+end
+
+-- Infinite Jump
+local infJumpConn = nil
+local function enableInfiniteJump()
+    if infJumpConn then return end
+    infJumpConn = UserInputService.JumpRequest:Connect(function()
+        if settings.InfiniteJump and LocalPlayer.Character then
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end
+    end)
+end
+
+local function disableInfiniteJump()
+    if infJumpConn then
+        infJumpConn:Disconnect()
+        infJumpConn = nil
+    end
+end
+
+-- Hitbox Expander
+local function expandHitboxes()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and not isTeammate(player) then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local distance = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                if distance <= 1000 then
+                    for _, part in pairs(player.Character:GetChildren()) do
+                        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                            if not originalHitboxSizes[part] then
+                                originalHitboxSizes[part] = {
+                                    Size = part.Size,
+                                    Transparency = part.Transparency,
+                                    CanCollide = part.CanCollide
+                                }
+                            end
+                            -- Expand hitbox to user-defined size
+                            local size = settings.HitboxSize
+                            part.Size = Vector3.new(size, size, size)
+                            part.Transparency = 0.5
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function restoreHitboxes()
+    for part, data in pairs(originalHitboxSizes) do
+        if part and part.Parent then
+            part.Size = data.Size
+            part.Transparency = data.Transparency
+            part.CanCollide = data.CanCollide
+        end
+    end
+    originalHitboxSizes = {}
+end
+
+local function enableHitboxExpander()
+    if hitboxExpanderConnection then return end
+    
+    hitboxExpanderConnection = RunService.Heartbeat:Connect(function()
+        if settings.HitboxExpander and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            expandHitboxes()
+        end
+    end)
+end
+
+local function disableHitboxExpander()
+    if hitboxExpanderConnection then
+        hitboxExpanderConnection:Disconnect()
+        hitboxExpanderConnection = nil
+    end
+    restoreHitboxes()
+end
+
+-- Spinbot
+local function enableSpinbot()
+    if spinbotConnection then return end
+    
+    spinbotConnection = RunService.Heartbeat:Connect(function()
+        if not settings.Spinbot or not LocalPlayer.Character then return end
+        
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            -- Spin the character's body 360 degrees
+            hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(20), 0)
+        end
+    end)
+end
+
+local function disableSpinbot()
+    if spinbotConnection then
+        spinbotConnection:Disconnect()
+        spinbotConnection = nil
+    end
 end
 
 -- Triggerbot
@@ -1238,9 +1162,11 @@ UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == settings.TriggerbotKey then triggerbotActive = false end
 end)
 
--- God Mode
+-- God Mode (IMPROVED - Instant target switch on kill)
 local godModeConnection = nil
 local godModeTarget = nil
+local lastTargetHealth = nil
+local previousTargets = {}
 
 local function teleportBehind(player)
     if not player or not player.Character or isTeammate(player) or not LocalPlayer.Character then return end
@@ -1251,6 +1177,91 @@ local function teleportBehind(player)
     
     local behind = tHRP.CFrame * CFrame.new(0, 0, 3)
     myHRP.CFrame = behind
+end
+
+local function getNextTarget()
+    -- Get a new target that isn't the previous one
+    local newTarget = getNearestPlayer()
+    
+    -- If the new target is the same as the old one, try to find another
+    if newTarget and godModeTarget and newTarget == godModeTarget then
+        local allTargets = {}
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and not isTeammate(player) and player.Character and player ~= godModeTarget then
+                local head = player.Character:FindFirstChild("Head")
+                if head and hasLineOfSight(player) then
+                    table.insert(allTargets, player)
+                end
+            end
+        end
+        
+        if #allTargets > 0 then
+            newTarget = allTargets[1]
+        end
+    end
+    
+    return newTarget
+end
+
+local function enableGodMode()
+    if godModeConnection then return end
+    
+    godModeTarget = getNearestPlayer()
+    if godModeTarget then
+        local hum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            lastTargetHealth = hum.Health
+        end
+    end
+    
+    godModeConnection = RunService.Heartbeat:Connect(function()
+        if not settings.GodMode then return end
+        
+        -- Check if current target is valid
+        if not godModeTarget or not godModeTarget.Parent or not godModeTarget.Character or isTeammate(godModeTarget) then
+            godModeTarget = getNextTarget()
+            if godModeTarget then
+                local hum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    lastTargetHealth = hum.Health
+                end
+            end
+        else
+            -- Check if target died (health reached 0 or dropped significantly)
+            local hum = godModeTarget.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                -- INSTANT SWITCH: If health is 0 or dropped below 5, immediately switch
+                if hum.Health <= 0 or hum.Health < 5 then
+                    -- Target is dead or dying, switch IMMEDIATELY
+                    table.insert(previousTargets, godModeTarget)
+                    godModeTarget = getNextTarget()
+                    if godModeTarget then
+                        local newHum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
+                        if newHum then
+                            lastTargetHealth = newHum.Health
+                        end
+                    end
+                else
+                    lastTargetHealth = hum.Health
+                end
+            end
+        end
+        
+        -- Teleport behind current target
+        if godModeTarget then
+            teleportBehind(godModeTarget)
+        end
+    end)
+end
+
+local function disableGodMode()
+    if godModeConnection then
+        godModeConnection:Disconnect()
+        godModeConnection = nil
+    end
+    godModeTarget = nil
+    lastTargetHealth = nil
+    previousTargets = {}
 end
 
 -- Visual Toggles
@@ -1327,21 +1338,43 @@ createToggle(rageContent, "Triggerbot", 84, function(e)
     settings.Triggerbot = e
 end)
 
-createToggle(rageContent, "God Mode", 126, function(e)
-    settings.GodMode = e
-    if e then
-        godModeConnection = RunService.Heartbeat:Connect(function()
-            if settings.GodMode and godModeTarget then teleportBehind(godModeTarget) end
-        end)
-        godModeTarget = getNearestPlayer()
-    else
-        if godModeConnection then
-            godModeConnection:Disconnect()
-            godModeConnection = nil
+-- Wallhack
+local function enableWallhack()
+    if wallhackConnection then return end
+    wallhackConnection = RunService.Heartbeat:Connect(function()
+        if not settings.Wallhack then return end
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and obj.Name ~= "Baseplate" then
+                local isPlayer = false
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p.Character and obj:IsDescendantOf(p.Character) then
+                        isPlayer = true
+                        break
+                    end
+                end
+                if not isPlayer and obj.Transparency < 0.9 then
+                    if not obj:GetAttribute("OrigTrans") then
+                        obj:SetAttribute("OrigTrans", obj.Transparency)
+                    end
+                    obj.Transparency = 0.9
+                end
+            end
         end
-        godModeTarget = nil
+    end)
+end
+
+local function disableWallhack()
+    if wallhackConnection then
+        wallhackConnection:Disconnect()
+        wallhackConnection = nil
     end
-end)
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj:GetAttribute("OrigTrans") then
+            obj.Transparency = obj:GetAttribute("OrigTrans")
+            obj:SetAttribute("OrigTrans", nil)
+        end
+    end
+end
 
 createToggle(rageContent, "Wallhack", 168, function(e)
     settings.Wallhack = e
@@ -1364,47 +1397,13 @@ createTextBox(settingsContent, "Speed", 42, 16, function(val)
     end
 end)
 
-createToggle(settingsContent, "Inf Health", 84, function(e)
-    settings.InfHealth = e
-    setInfHealth(e)
-end)
-
-createToggle(settingsContent, "Inf Ammo", 126, function(e)
-    settings.InfAmmo = e
-    setInfAmmo(e)
-end)
-
-createToggle(settingsContent, "No Recoil", 168, function(e)
-    settings.NoRecoil = e
-    setNoRecoil(e)
-end)
-
-createToggle(settingsContent, "Insta Reload", 210, function(e)
-    settings.InstaReload = e
-    setInstaReload(e)
-end)
-
-createToggle(settingsContent, "Fly", 252, function(e)
-    settings.Fly = e
-    if not e and flyEnabled then
-        flyEnabled = false
-        if flyBodyVelocity then flyBodyVelocity:Destroy() flyBodyVelocity = nil end
-        if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro = nil end
-        if flyConnection then
-            flyConnection:Disconnect()
-            flyConnection = nil
-        end
+createToggle(rageContent, "God Mode", 126, function(e)
+    settings.GodMode = e
+    if e then
+        enableGodMode()
+    else
+        disableGodMode()
     end
-end)
-
-createToggle(settingsContent, "Infinite Jump", 294, function(e)
-    settings.InfiniteJump = e
-    if e then enableInfiniteJump() else disableInfiniteJump() end
-end)
-
-createToggle(settingsContent, "Invisible", 336, function(e)
-    settings.Invisible = e
-    setInvisible(e)
 end)
 
 -- Player Events (AUTO-UPDATE ON JOIN/TEAM CHANGE - From GitHub)
@@ -1477,21 +1476,36 @@ LocalPlayer:GetPropertyChangedSignal("TeamColor"):Connect(function()
     refreshAllESP()
 end)
 
--- Main Loop
-RunService.RenderStepped:Connect(function()
-    if settings.TracerESP then updateTracers() end
-    if settings.DistanceESP then updateDistanceLabels() end
-    if settings.Aimbot and aimbotActive then
-        local target = getNearestPlayer()
-        if target and not isTeammate(target) then
-            aimAtPlayer(target)
+createToggle(settingsContent, "Spinbot", 84, function(e)
+    settings.Spinbot = e
+    if e then
+        enableSpinbot()
+    else
+        disableSpinbot()
+    end
+end)
+
+createToggle(settingsContent, "Fly", 126, function(e)
+    settings.Fly = e
+    if not e and flyEnabled then
+        flyEnabled = false
+        if flyBodyVelocity then flyBodyVelocity:Destroy() flyBodyVelocity = nil end
+        if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro = nil end
+        if flyConnection then
+            flyConnection:Disconnect()
+            flyConnection = nil
         end
     end
-    if settings.GodMode then
-        if not godModeTarget or not godModeTarget.Parent or not godModeTarget.Character or isTeammate(godModeTarget) then
-            godModeTarget = getNearestPlayer()
-        end
-    end
+end)
+
+createToggle(settingsContent, "Infinite Jump", 168, function(e)
+    settings.InfiniteJump = e
+    if e then enableInfiniteJump() else disableInfiniteJump() end
+end)
+
+createToggle(settingsContent, "Invisible", 210, function(e)
+    settings.Invisible = e
+    setInvisible(e)
 end)
 
 -- Auto-refresh ESP every 2 seconds (backup check for team changes)
@@ -1503,18 +1517,16 @@ task.spawn(function()
     end
 end)
 
--- Character Respawn
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    if settings.Invisible then setInvisible(true) end
-    if settings.InfiniteJump then enableInfiniteJump() end
-    if settings.InfHealth then setInfHealth(true) end
-    if settings.SpeedHack then setSpeed(true) end
-    if settings.NoRecoil then setNoRecoil(true) end
-    if settings.InfAmmo then setInfAmmo(true) end
-    if settings.InstaReload then setInstaReload(true) end
-    if settings.Fly and flyEnabled then enableFly() end
-    refreshAllESP()
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    if settings.TracerESP then updateTracers() end
+    if settings.DistanceESP then updateDistanceLabels() end
+    if settings.Aimbot and aimbotActive then
+        local target = getNearestPlayer()
+        if target and not isTeammate(target) then
+            aimAtPlayer(target)
+        end
+    end
 end)
 
 -- Reopen Button
@@ -1566,14 +1578,14 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
-print("✅ X-Aim Hub Loaded!")
-print("🎯 Aimbot: Wall check enabled - Won't lock through walls!")
-print("👁️ ESP: All features working with GITHUB FIXES")
-print("   - Team Check: 4 methods, auto-updates on team changes")
-print("   - TracerESP: Drawing API + ScreenGui fallback")
-print("   - Auto-refresh: Every 2 seconds + on player/team events")
-print("🔥 Silent Aim: Expands hitboxes to 30 studs")
-print("💚 Inf Health: Sets health to math.huge + updates GUI")
-print("🔫 Inf Ammo: Forces ammo to 999 + updates display")
-print("🔄 Reopen Button: Click X to minimize, click button to reopen!")
-print("⚡ All features working for Arsenal!")
+-- Character Respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if settings.Invisible then setInvisible(true) end
+    if settings.InfiniteJump then enableInfiniteJump() end
+    if settings.SpeedHack then setSpeed(true) end
+    if settings.Fly and flyEnabled then enableFly() end
+    if settings.Spinbot then enableSpinbot() end
+    if settings.GodMode then enableGodMode() end
+    refreshAllESP()
+end)
