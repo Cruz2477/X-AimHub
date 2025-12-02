@@ -54,7 +54,8 @@ local settings = {
     Invisible = false,
     Spinbot = false,
     HitboxExpander = false,
-    HitboxSize = 10
+    HitboxSize = 10,
+    ChatSpammer = false
 }
 
 -- Create GUI
@@ -206,9 +207,10 @@ print("👁️ ESP: All features working with GITHUB FIXES")
 print("   - Team Check: 4 methods, auto-updates on team changes")
 print("   - TracerESP: Drawing API + ScreenGui fallback")
 print("   - Auto-refresh: Every 2 seconds + on player/team events")
-print("😈 God Mode: Auto-switches to new target after kills!")
+print("😈 God Mode: INSTANT target switch on kill!")
 print("📦 Hitbox Expander: NEW - Expand hitboxes 5-50 studs (adjustable slider)")
-print("🌀 Spinbot: NEW - Spins character 360° while you control camera")
+print("💬 Chat Spammer: NEW - Random trash talk after kills (EZ, L, GET GOOD, CHEEKS)")
+print("🌀 Spinbot: Spins character 360° while you control camera")
 print("🔄 Reopen Button: Click X to minimize, click button to reopen!")
 print("⚡ All features working for Arsenal!")
 settingsContent.Visible = false
@@ -1112,6 +1114,37 @@ local function disableHitboxExpander()
     restoreHitboxes()
 end
 
+-- Chat Spammer
+local chatSpamMessages = {"EZ", "L", "GET GOOD", "CHEEKS"}
+local lastKillCount = 0
+
+local function enableChatSpammer()
+    if not LocalPlayer:FindFirstChild("leaderstats") then return end
+    
+    local kills = LocalPlayer.leaderstats:FindFirstChild("Kills")
+    if not kills then return end
+    
+    lastKillCount = kills.Value
+    
+    kills:GetPropertyChangedSignal("Value"):Connect(function()
+        if settings.ChatSpammer and kills.Value > lastKillCount then
+            -- Got a kill, send random message
+            local randomMessage = chatSpamMessages[math.random(1, #chatSpamMessages)]
+            
+            pcall(function()
+                local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+                if chatEvents then
+                    local sayMessage = chatEvents:FindFirstChild("SayMessageRequest")
+                    if sayMessage then
+                        sayMessage:FireServer(randomMessage, "All")
+                    end
+                end
+            end)
+        end
+        lastKillCount = kills.Value
+    end)
+end
+
 -- Spinbot
 local function enableSpinbot()
     if spinbotConnection then return end
@@ -1508,6 +1541,13 @@ createToggle(settingsContent, "Invisible", 210, function(e)
     setInvisible(e)
 end)
 
+createToggle(settingsContent, "Chat Spammer", 252, function(e)
+    settings.ChatSpammer = e
+    if e then
+        enableChatSpammer()
+    end
+end)
+
 -- Auto-refresh ESP every 2 seconds (backup check for team changes)
 task.spawn(function()
     while task.wait(2) do
@@ -1587,5 +1627,6 @@ LocalPlayer.CharacterAdded:Connect(function()
     if settings.Fly and flyEnabled then enableFly() end
     if settings.Spinbot then enableSpinbot() end
     if settings.GodMode then enableGodMode() end
+    if settings.ChatSpammer then enableChatSpammer() end
     refreshAllESP()
 end)
