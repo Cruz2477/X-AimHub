@@ -19,6 +19,9 @@ local nameTags = {}
 local tracers = {}
 local distanceLabels = {}
 local fovCircle = nil
+local originalHitboxSizes = {}
+local silentAimActive = false
+local oldNamecall = nil
 local invisibleParts = {}
 local wallhackConnection = nil
 local flyBodyVelocity = nil
@@ -29,8 +32,6 @@ local lastSpaceTap = 0
 local godModeConnection = nil
 local godModeTarget = nil
 local spinbotConnection = nil
-local hitboxExpanderConnection = nil
-local originalHitboxSizes = {}
 
 -- Settings
 local settings = {
@@ -44,6 +45,7 @@ local settings = {
     TriggerbotKey = Enum.KeyCode.Q,
     TeamCheck = true,
     Aimbot = false,
+    SilentAim = false,
     ESPRange = 1000,
     GodMode = false,
     Wallhack = false,
@@ -52,9 +54,7 @@ local settings = {
     Fly = false,
     InfiniteJump = false,
     Invisible = false,
-    Spinbot = false,
-    HitboxExpander = false,
-    HitboxSize = 10
+    Spinbot = false
 }
 
 -- Create GUI
@@ -206,10 +206,11 @@ print("👁️ ESP: All features working with GITHUB FIXES")
 print("   - Team Check: 4 methods, auto-updates on team changes")
 print("   - TracerESP: Drawing API + ScreenGui fallback")
 print("   - Auto-refresh: Every 2 seconds + on player/team events")
-print("😈 God Mode: Auto-switches to new target after kills!")
-print("📦 Hitbox Expander: NEW - Expand hitboxes 5-50 studs (adjustable slider)")
+print("🔥 Silent Aim: Expands hitboxes to 30 studs")
+print("😈 God Mode: IMPROVED - Auto-switches to new target after kills!")
 print("🌀 Spinbot: NEW - Spins character 360° while you control camera")
 print("🔄 Reopen Button: Click X to minimize, click button to reopen!")
+print("⚡ Removed: Inf Health, Inf Ammo, No Recoil, Insta Reload")
 print("⚡ All features working for Arsenal!")
 settingsContent.Visible = false
 settingsContent.Parent = mainFrame
@@ -1051,65 +1052,6 @@ local function disableInfiniteJump()
         infJumpConn:Disconnect()
         infJumpConn = nil
     end
-end
-
--- Hitbox Expander
-local function expandHitboxes()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and not isTeammate(player) then
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local distance = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                if distance <= 1000 then
-                    for _, part in pairs(player.Character:GetChildren()) do
-                        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                            if not originalHitboxSizes[part] then
-                                originalHitboxSizes[part] = {
-                                    Size = part.Size,
-                                    Transparency = part.Transparency,
-                                    CanCollide = part.CanCollide
-                                }
-                            end
-                            -- Expand hitbox to user-defined size
-                            local size = settings.HitboxSize
-                            part.Size = Vector3.new(size, size, size)
-                            part.Transparency = 0.5
-                            part.CanCollide = false
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
-local function restoreHitboxes()
-    for part, data in pairs(originalHitboxSizes) do
-        if part and part.Parent then
-            part.Size = data.Size
-            part.Transparency = data.Transparency
-            part.CanCollide = data.CanCollide
-        end
-    end
-    originalHitboxSizes = {}
-end
-
-local function enableHitboxExpander()
-    if hitboxExpanderConnection then return end
-    
-    hitboxExpanderConnection = RunService.Heartbeat:Connect(function()
-        if settings.HitboxExpander and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            expandHitboxes()
-        end
-    end)
-end
-
-local function disableHitboxExpander()
-    if hitboxExpanderConnection then
-        hitboxExpanderConnection:Disconnect()
-        hitboxExpanderConnection = nil
-    end
-    restoreHitboxes()
 end
 
 -- Spinbot
