@@ -54,8 +54,7 @@ local settings = {
     Invisible = false,
     Spinbot = false,
     HitboxExpander = false,
-    HitboxSize = 10,
-    ChatSpammer = false
+    HitboxSize = 10
 }
 
 -- Create GUI
@@ -207,10 +206,9 @@ print("👁️ ESP: All features working with GITHUB FIXES")
 print("   - Team Check: 4 methods, auto-updates on team changes")
 print("   - TracerESP: Drawing API + ScreenGui fallback")
 print("   - Auto-refresh: Every 2 seconds + on player/team events")
-print("😈 God Mode: INSTANT target switch on kill!")
+print("😈 God Mode: Auto-switches to new target after kills!")
 print("📦 Hitbox Expander: NEW - Expand hitboxes 5-50 studs (adjustable slider)")
-print("💬 Chat Spammer: NEW - Random trash talk after kills (EZ, L, GET GOOD, CHEEKS)")
-print("🌀 Spinbot: Spins character 360° while you control camera")
+print("🌀 Spinbot: NEW - Spins character 360° while you control camera")
 print("🔄 Reopen Button: Click X to minimize, click button to reopen!")
 print("⚡ All features working for Arsenal!")
 settingsContent.Visible = false
@@ -1114,37 +1112,6 @@ local function disableHitboxExpander()
     restoreHitboxes()
 end
 
--- Chat Spammer
-local chatSpamMessages = {"EZ", "L", "GET GOOD", "CHEEKS"}
-local lastKillCount = 0
-
-local function enableChatSpammer()
-    if not LocalPlayer:FindFirstChild("leaderstats") then return end
-    
-    local kills = LocalPlayer.leaderstats:FindFirstChild("Kills")
-    if not kills then return end
-    
-    lastKillCount = kills.Value
-    
-    kills:GetPropertyChangedSignal("Value"):Connect(function()
-        if settings.ChatSpammer and kills.Value > lastKillCount then
-            -- Got a kill, send random message
-            local randomMessage = chatSpamMessages[math.random(1, #chatSpamMessages)]
-            
-            pcall(function()
-                local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-                if chatEvents then
-                    local sayMessage = chatEvents:FindFirstChild("SayMessageRequest")
-                    if sayMessage then
-                        sayMessage:FireServer(randomMessage, "All")
-                    end
-                end
-            end)
-        end
-        lastKillCount = kills.Value
-    end)
-end
-
 -- Spinbot
 local function enableSpinbot()
     if spinbotConnection then return end
@@ -1195,11 +1162,10 @@ UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == settings.TriggerbotKey then triggerbotActive = false end
 end)
 
--- God Mode (IMPROVED - Instant target switch on kill)
+-- God Mode (IMPROVED - Auto-switches targets after kills)
 local godModeConnection = nil
 local godModeTarget = nil
 local lastTargetHealth = nil
-local previousTargets = {}
 
 local function teleportBehind(player)
     if not player or not player.Character or isTeammate(player) or not LocalPlayer.Character then return end
@@ -1210,30 +1176,6 @@ local function teleportBehind(player)
     
     local behind = tHRP.CFrame * CFrame.new(0, 0, 3)
     myHRP.CFrame = behind
-end
-
-local function getNextTarget()
-    -- Get a new target that isn't the previous one
-    local newTarget = getNearestPlayer()
-    
-    -- If the new target is the same as the old one, try to find another
-    if newTarget and godModeTarget and newTarget == godModeTarget then
-        local allTargets = {}
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and not isTeammate(player) and player.Character and player ~= godModeTarget then
-                local head = player.Character:FindFirstChild("Head")
-                if head and hasLineOfSight(player) then
-                    table.insert(allTargets, player)
-                end
-            end
-        end
-        
-        if #allTargets > 0 then
-            newTarget = allTargets[1]
-        end
-    end
-    
-    return newTarget
 end
 
 local function enableGodMode()
@@ -1252,7 +1194,7 @@ local function enableGodMode()
         
         -- Check if current target is valid
         if not godModeTarget or not godModeTarget.Parent or not godModeTarget.Character or isTeammate(godModeTarget) then
-            godModeTarget = getNextTarget()
+            godModeTarget = getNearestPlayer()
             if godModeTarget then
                 local hum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
                 if hum then
@@ -1260,14 +1202,12 @@ local function enableGodMode()
                 end
             end
         else
-            -- Check if target died (health reached 0 or dropped significantly)
+            -- Check if target died (health reached 0)
             local hum = godModeTarget.Character:FindFirstChildOfClass("Humanoid")
             if hum then
-                -- INSTANT SWITCH: If health is 0 or dropped below 5, immediately switch
-                if hum.Health <= 0 or hum.Health < 5 then
-                    -- Target is dead or dying, switch IMMEDIATELY
-                    table.insert(previousTargets, godModeTarget)
-                    godModeTarget = getNextTarget()
+                if hum.Health <= 0 or (lastTargetHealth and hum.Health < lastTargetHealth * 0.1) then
+                    -- Target died, switch to new target immediately
+                    godModeTarget = getNearestPlayer()
                     if godModeTarget then
                         local newHum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
                         if newHum then
@@ -1294,7 +1234,6 @@ local function disableGodMode()
     end
     godModeTarget = nil
     lastTargetHealth = nil
-    previousTargets = {}
 end
 
 -- Visual Toggles
@@ -1541,13 +1480,6 @@ createToggle(settingsContent, "Invisible", 210, function(e)
     setInvisible(e)
 end)
 
-createToggle(settingsContent, "Chat Spammer", 252, function(e)
-    settings.ChatSpammer = e
-    if e then
-        enableChatSpammer()
-    end
-end)
-
 -- Auto-refresh ESP every 2 seconds (backup check for team changes)
 task.spawn(function()
     while task.wait(2) do
@@ -1627,6 +1559,5 @@ LocalPlayer.CharacterAdded:Connect(function()
     if settings.Fly and flyEnabled then enableFly() end
     if settings.Spinbot then enableSpinbot() end
     if settings.GodMode then enableGodMode() end
-    if settings.ChatSpammer then enableChatSpammer() end
     refreshAllESP()
 end)
