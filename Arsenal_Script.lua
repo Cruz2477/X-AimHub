@@ -19,9 +19,6 @@ local nameTags = {}
 local tracers = {}
 local distanceLabels = {}
 local fovCircle = nil
-local originalHitboxSizes = {}
-local silentAimActive = false
-local oldNamecall = nil
 local invisibleParts = {}
 local wallhackConnection = nil
 local flyBodyVelocity = nil
@@ -32,6 +29,8 @@ local lastSpaceTap = 0
 local godModeConnection = nil
 local godModeTarget = nil
 local spinbotConnection = nil
+local hitboxExpanderConnection = nil
+local originalHitboxSizes = {}
 
 -- Settings
 local settings = {
@@ -45,7 +44,6 @@ local settings = {
     TriggerbotKey = Enum.KeyCode.Q,
     TeamCheck = true,
     Aimbot = false,
-    SilentAim = false,
     ESPRange = 1000,
     GodMode = false,
     Wallhack = false,
@@ -54,7 +52,9 @@ local settings = {
     Fly = false,
     InfiniteJump = false,
     Invisible = false,
-    Spinbot = false
+    Spinbot = false,
+    HitboxExpander = false,
+    HitboxSize = 10
 }
 
 -- Create GUI
@@ -206,11 +206,10 @@ print("👁️ ESP: All features working with GITHUB FIXES")
 print("   - Team Check: 4 methods, auto-updates on team changes")
 print("   - TracerESP: Drawing API + ScreenGui fallback")
 print("   - Auto-refresh: Every 2 seconds + on player/team events")
-print("🔥 Silent Aim: Expands hitboxes to 30 studs")
-print("😈 God Mode: IMPROVED - Auto-switches to new target after kills!")
+print("😈 God Mode: Auto-switches to new target after kills!")
+print("📦 Hitbox Expander: NEW - Expand hitboxes 5-50 studs (adjustable slider)")
 print("🌀 Spinbot: NEW - Spins character 360° while you control camera")
 print("🔄 Reopen Button: Click X to minimize, click button to reopen!")
-print("⚡ Removed: Inf Health, Inf Ammo, No Recoil, Insta Reload")
 print("⚡ All features working for Arsenal!")
 settingsContent.Visible = false
 settingsContent.Parent = mainFrame
@@ -1054,6 +1053,65 @@ local function disableInfiniteJump()
     end
 end
 
+-- Hitbox Expander
+local function expandHitboxes()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and not isTeammate(player) then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local distance = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                if distance <= 1000 then
+                    for _, part in pairs(player.Character:GetChildren()) do
+                        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                            if not originalHitboxSizes[part] then
+                                originalHitboxSizes[part] = {
+                                    Size = part.Size,
+                                    Transparency = part.Transparency,
+                                    CanCollide = part.CanCollide
+                                }
+                            end
+                            -- Expand hitbox to user-defined size
+                            local size = settings.HitboxSize
+                            part.Size = Vector3.new(size, size, size)
+                            part.Transparency = 0.5
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function restoreHitboxes()
+    for part, data in pairs(originalHitboxSizes) do
+        if part and part.Parent then
+            part.Size = data.Size
+            part.Transparency = data.Transparency
+            part.CanCollide = data.CanCollide
+        end
+    end
+    originalHitboxSizes = {}
+end
+
+local function enableHitboxExpander()
+    if hitboxExpanderConnection then return end
+    
+    hitboxExpanderConnection = RunService.Heartbeat:Connect(function()
+        if settings.HitboxExpander and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            expandHitboxes()
+        end
+    end)
+end
+
+local function disableHitboxExpander()
+    if hitboxExpanderConnection then
+        hitboxExpanderConnection:Disconnect()
+        hitboxExpanderConnection = nil
+    end
+    restoreHitboxes()
+end
+
 -- Spinbot
 local function enableSpinbot()
     if spinbotConnection then return end
@@ -1104,10 +1162,11 @@ UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == settings.TriggerbotKey then triggerbotActive = false end
 end)
 
--- God Mode (IMPROVED - Auto-switches targets after kills)
+-- God Mode (IMPROVED - Instant target switch on kill)
 local godModeConnection = nil
 local godModeTarget = nil
 local lastTargetHealth = nil
+local previousTargets = {}
 
 local function teleportBehind(player)
     if not player or not player.Character or isTeammate(player) or not LocalPlayer.Character then return end
@@ -1118,6 +1177,30 @@ local function teleportBehind(player)
     
     local behind = tHRP.CFrame * CFrame.new(0, 0, 3)
     myHRP.CFrame = behind
+end
+
+local function getNextTarget()
+    -- Get a new target that isn't the previous one
+    local newTarget = getNearestPlayer()
+    
+    -- If the new target is the same as the old one, try to find another
+    if newTarget and godModeTarget and newTarget == godModeTarget then
+        local allTargets = {}
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and not isTeammate(player) and player.Character and player ~= godModeTarget then
+                local head = player.Character:FindFirstChild("Head")
+                if head and hasLineOfSight(player) then
+                    table.insert(allTargets, player)
+                end
+            end
+        end
+        
+        if #allTargets > 0 then
+            newTarget = allTargets[1]
+        end
+    end
+    
+    return newTarget
 end
 
 local function enableGodMode()
@@ -1136,7 +1219,7 @@ local function enableGodMode()
         
         -- Check if current target is valid
         if not godModeTarget or not godModeTarget.Parent or not godModeTarget.Character or isTeammate(godModeTarget) then
-            godModeTarget = getNearestPlayer()
+            godModeTarget = getNextTarget()
             if godModeTarget then
                 local hum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
                 if hum then
@@ -1144,12 +1227,14 @@ local function enableGodMode()
                 end
             end
         else
-            -- Check if target died (health reached 0)
+            -- Check if target died (health reached 0 or dropped significantly)
             local hum = godModeTarget.Character:FindFirstChildOfClass("Humanoid")
             if hum then
-                if hum.Health <= 0 or (lastTargetHealth and hum.Health < lastTargetHealth * 0.1) then
-                    -- Target died, switch to new target immediately
-                    godModeTarget = getNearestPlayer()
+                -- INSTANT SWITCH: If health is 0 or dropped below 5, immediately switch
+                if hum.Health <= 0 or hum.Health < 5 then
+                    -- Target is dead or dying, switch IMMEDIATELY
+                    table.insert(previousTargets, godModeTarget)
+                    godModeTarget = getNextTarget()
                     if godModeTarget then
                         local newHum = godModeTarget.Character and godModeTarget.Character:FindFirstChildOfClass("Humanoid")
                         if newHum then
@@ -1176,6 +1261,7 @@ local function disableGodMode()
     end
     godModeTarget = nil
     lastTargetHealth = nil
+    previousTargets = {}
 end
 
 -- Visual Toggles
